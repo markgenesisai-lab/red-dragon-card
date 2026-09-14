@@ -1,0 +1,32 @@
+name: temporary EV customs fix
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  fix:
+    if: github.sha != 'REPLACED_AFTER_FIX'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply exact EV customs change
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          old = "if(['electric','ev','bev','electricity'].indexOf(fuel)>=0)return null;"
+          new = "if(['electric','ev','bev','electricity'].indexOf(fuel)>=0)return 0;"
+          assert s.count(old) == 1, f'Expected exactly one EV customs condition, found {s.count(old)}'
+          s = s.replace(old, new)
+          p.write_text(s, encoding='utf-8')
+      - name: Commit and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/_ev-customs-fix.yml
+          git add index.html
+          git commit -m "fix: calculate EV customs as zero within quota"
+          git push
