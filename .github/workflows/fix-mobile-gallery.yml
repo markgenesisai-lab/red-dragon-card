@@ -16,25 +16,34 @@ jobs:
           from pathlib import Path
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
-          old1 = 'photos.map(function(u,i){return\'<button class="rd-slide" data-photo-index="\'+i+\'" type="button" aria-label="Открыть фото \'+(i+1)+\' во весь экран"><img \'+(i?\'loading="lazy"\':\'loading="eager"\')+\' src="\'+esc(u)+'\" alt="\'+esc(title)+' — фото \'+(i+1)+\'" draggable="false"></button>\'}).join(\'\')'
-          new1 = 'photos.map(function(u,i){return\'<button class="rd-slide" data-photo-index="\'+i+\'" type="button" aria-label="Открыть фото \'+(i+1)+\' во весь экран"><img loading="eager" decoding="async" src="\'+esc(u)+'\" alt="\'+esc(title)+' — фото \'+(i+1)+\'" draggable="false"></button>\'}).join(\'\')'
-          if old1 not in s: raise SystemExit('gallery image loading pattern not found')
-          s=s.replace(old1,new1,1)
-          old3 = '@media(max-width:899px){html,body{overflow-x:hidden!important;max-width:100%;}'
+
+          needle = """(i?'loading=\"lazy\"':'loading=\"eager\"')"""
+          replacement = """'loading=\"eager\"'"""
+          if needle not in s:
+              raise SystemExit('gallery loading marker not found')
+          s = s.replace(needle, replacement, 1)
+
+          marker = '@media(max-width:899px){html,body{overflow-x:hidden!important;max-width:100%;}'
           inject = '@media(max-width:760px){#rd-red-dragon-card .rd-fullscreen-close{top:max(4px,env(safe-area-inset-top));right:max(4px,env(safe-area-inset-right));z-index:10}#rd-red-dragon-card .rd-fullscreen-prev{left:max(4px,env(safe-area-inset-left));z-index:10;opacity:1!important;visibility:visible!important}#rd-red-dragon-card .rd-fullscreen-next{right:max(4px,env(safe-area-inset-right));z-index:10;opacity:1!important;visibility:visible!important}#rd-red-dragon-card .rd-fullscreen-img{width:auto!important;height:auto!important;max-width:calc(100vw - 16px)!important;max-height:calc(100vh - 16px)!important;object-fit:contain}}'
           if inject not in s:
-            idx=s.index(old3)
-            s=s[:idx]+inject+s[idx:]
-          old4 = "function wire(c,title){root.querySelectorAll('.rd-nav-item')"
+              if marker not in s: raise SystemExit('mobile CSS marker not found')
+              idx = s.index(marker)
+              s = s[:idx] + inject + s[idx:]
+
+          fn = "function wire(c,title){root.querySelectorAll('.rd-nav-item')"
           preload = "function preloadMobileGalleryImages(){if(!window.matchMedia||!window.matchMedia('(max-width:760px)').matches)return;var imgs=root.querySelectorAll('#rd-gallery-track .rd-slide img[src]'),cache=[];imgs.forEach(function(img){var u=img.currentSrc||img.src;if(!u)return;var pre=new Image();pre.decoding='async';pre.loading='eager';pre.src=u;cache.push(pre)});window.__rdMobileGalleryPreloads=cache} "
           if preload not in s:
-            pos=s.index(old4)
-            s=s[:pos]+preload+s[pos:]
-          old5 = 'setPhoto(0,false)} async function run(){'
-          new5 = 'setPhoto(0,false);preloadMobileGalleryImages()} async function run(){'
-          if old5 not in s: raise SystemExit('wire initialization marker not found')
-          s=s.replace(old5,new5,1)
-          p.write_text(s,encoding='utf-8')
+              if fn not in s: raise SystemExit('wire marker not found')
+              pos = s.index(fn)
+              s = s[:pos] + preload + s[pos:]
+
+          init = 'setPhoto(0,false)} async function run(){'
+          init2 = 'setPhoto(0,false);preloadMobileGalleryImages()} async function run(){'
+          if init not in s: raise SystemExit('gallery init marker not found')
+          s = s.replace(init, init2, 1)
+
+          p.write_text(s, encoding='utf-8')
+          print('index.html patched')
       - name: Verify only index.html and mobile gallery changes
         shell: bash
         run: |
