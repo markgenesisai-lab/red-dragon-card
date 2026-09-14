@@ -1,0 +1,71 @@
+name: Apply exact mobile gallery and price modal update
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-price-gallery-update.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply exact patch
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          old_mobile_close = '#rd-red-dragon-card .rd-fullscreen-close{top:max(4px,env(safe-area-inset-top));right:max(4px,env(safe-area-inset-right));z-index:10}'
+          new_mobile_close = '#rd-red-dragon-card .rd-fullscreen-close{top:20px;right:max(2px,env(safe-area-inset-right));z-index:10}'
+          assert s.count(old_mobile_close) == 1, f'mobile close marker count={s.count(old_mobile_close)}'
+          s = s.replace(old_mobile_close, new_mobile_close, 1)
+
+          style_marker = '</style><script>'
+          assert s.count(style_marker) == 1, f'style marker count={s.count(style_marker)}'
+          modal_css = '#rd-red-dragon-card #rd-price-modal .rd-modal-head{align-items:center}#rd-red-dragon-card #rd-price-modal .rd-modal-close{display:grid;place-items:center;line-height:1}#rd-red-dragon-card #rd-price-modal .rd-modal-panel{scrollbar-width:none}#rd-red-dragon-card #rd-price-modal .rd-modal-panel::-webkit-scrollbar{width:0;height:0}#rd-red-dragon-card #rd-price-modal .rd-modal-panel.is-scrolling{scrollbar-width:thin}#rd-red-dragon-card #rd-price-modal .rd-modal-panel.is-scrolling::-webkit-scrollbar{width:6px}#rd-red-dragon-card #rd-price-modal .rd-modal-panel.is-scrolling::-webkit-scrollbar-track{background:transparent}#rd-red-dragon-card #rd-price-modal .rd-modal-panel.is-scrolling::-webkit-scrollbar-thumb{background:rgba(115,115,115,.5);border-radius:999px}'
+          s = s.replace(style_marker, modal_css + style_marker, 1)
+
+          old_price_modal = "function priceModal(c){var d=priceData(c),p=d.sourceUsd,b=d.sourceByn;root.querySelector('#rd-price-modal-body').innerHTML='<div style=\"display:flex;justify-content:space-between;gap:16px;padding-bottom:14px;border-bottom:1px solid var(--rd-border)\"><div><div class=\"rd-label\">Автомобиль</div><div class=\"rd-value\" style=\"margin-top:4px\">'+esc(c.title||'')+'</div></div><div style=\"text-align:right\"><div class=\"rd-label\">Цена авто</div><div class=\"rd-value\" style=\"margin-top:4px;color:var(--rd-accent)\">'+usd(p)+'</div></div></div><div style=\"display:grid;gap:10px;margin-top:14px\"><div class=\"rd-addon\"><div class=\"rd-addon-title\">Цена автомобиля</div><div class=\"rd-addon-usd\" style=\"margin-top:3px\">'+usd(p)+'</div><div class=\"rd-addon-byn\">'+esc(b!=null?bynText(b):'—')+'</div></div><div class=\"rd-addon\"><div class=\"rd-addon-title\">Цена с доставкой в РБ</div><div class=\"rd-addon-usd\" style=\"margin-top:3px\">'+(d.deliveryUsd!=null?usd(d.deliveryUsd):'Уточняется')+'</div><div class=\"rd-addon-byn\">'+esc(d.deliveryByn!=null?bynText(d.deliveryByn):'—')+'</div></div><div class=\"rd-addon\"><div class=\"rd-addon-title\">Цена с доставкой и таможней</div><div class=\"rd-addon-usd\" style=\"margin-top:3px\">'+(d.customsUsd!=null?usd(d.customsUsd):'Уточняется')+'</div><div class=\"rd-addon-byn\">'+esc(d.customsByn!=null?bynText(d.customsByn):'—')+'</div></div></div><p class=\"rd-small rd-muted\" style=\"margin:16px 0 0\">Цена предварительная. Точная стоимость рассчитывается партнёром по вашим параметрам доставки.</p>';openModal('rd-price-modal')}"
+          new_price_modal = "function priceModal(c){var d=priceData(c),p=d.sourceUsd,b=d.sourceByn;root.querySelector('#rd-price-modal-body').innerHTML='<div style=\"display:flex;justify-content:space-between;gap:16px;padding-bottom:14px;border-bottom:1px solid var(--rd-border)\"><div><div class=\"rd-label\">Автомобиль</div><div class=\"rd-value\" style=\"margin-top:4px\">'+esc(c.title||'')+'</div></div><div style=\"text-align:right\"><div class=\"rd-label\">Цена авто</div><div class=\"rd-value\" style=\"margin-top:4px;color:var(--rd-accent)\">'+usd(p)+'</div><div class=\"rd-addon-byn\" style=\"margin-top:4px\">'+esc(b!=null?bynText(b):'—')+'</div></div></div><div style=\"display:grid;gap:10px;margin-top:14px\"><div class=\"rd-addon\"><div class=\"rd-addon-title\">Цена автомобиля</div><div class=\"rd-addon-usd\" style=\"margin-top:3px\">'+usd(p)+'</div><div class=\"rd-addon-byn\">'+esc(b!=null?bynText(b):'—')+'</div><div class=\"rd-addon-note\">Указана цена авто на площадке в Китае.</div></div><div class=\"rd-addon\"><div class=\"rd-addon-title\">Цена с доставкой в РБ</div><div class=\"rd-addon-usd\" style=\"margin-top:3px\">'+(d.deliveryUsd!=null?usd(d.deliveryUsd):'Уточняется')+'</div><div class=\"rd-addon-byn\">'+esc(d.deliveryByn!=null?bynText(d.deliveryByn):'—')+'</div><div class=\"rd-addon-note\">Включает инспекцию автомобиля на площадке в Китае, оформление документов, доставку до порта отгрузки в Китае. Далее цена включает оформление экспортных документов и доставку авто до Республики Беларусь.</div></div><div class=\"rd-addon\"><div class=\"rd-addon-title\">Цена с доставкой и таможней</div><div class=\"rd-addon-usd\" style=\"margin-top:3px\">'+(d.customsUsd!=null?usd(d.customsUsd):'Уточняется')+'</div><div class=\"rd-addon-byn\">'+esc(d.customsByn!=null?bynText(d.customsByn):'—')+'</div><div class=\"rd-addon-note\">Указанная цена содержит стоимость затрат на доставку, оплату всех таможенных пошлин и платежей. Расчет таможенных платежей произведен с учетом ввоза авто по Указу №140 от 10 апреля 2019 г. (льготная растаможка).</div></div></div><p class=\"rd-small rd-muted\" style=\"margin:16px 0 0\">Цена предварительная. Точную стоимость уточняйте в отделе продаж ООО \"РЭД ДРЭГОН\"</p>';var panel=root.querySelector('#rd-price-modal .rd-modal-panel');if(panel&&!panel.dataset.scrollbarsWired){panel.dataset.scrollbarsWired='1';var scrollTimer=0;panel.addEventListener('scroll',function(){panel.classList.add('is-scrolling');clearTimeout(scrollTimer);scrollTimer=setTimeout(function(){panel.classList.remove('is-scrolling')},450)},{passive:true})}openModal('rd-price-modal')}"
+          assert s.count(old_price_modal) == 1, f'priceModal marker count={s.count(old_price_modal)}'
+          s = s.replace(old_price_modal, new_price_modal, 1)
+
+          note_style_marker = '#rd-red-dragon-card .rd-addon-byn{display:inline-flex;align-items:center;gap:3px;color:var(--rd-muted);font-size:12px}'
+          note_style = '#rd-red-dragon-card .rd-addon-note{margin-top:5px;color:var(--rd-muted);font-size:12px;line-height:17px}'
+          assert s.count(note_style_marker) == 1, f'addon-byn marker count={s.count(note_style_marker)}'
+          s = s.replace(note_style_marker, note_style_marker + note_style, 1)
+
+          p.write_text(s, encoding='utf-8')
+
+          # Exact verification: only requested markers changed, no duplicate insertions.
+          assert s.count(new_mobile_close) == 1
+          assert s.count(modal_css) == 1
+          assert s.count(new_price_modal) == 1
+          assert s.count(note_style) == 1
+          assert 'Цена предварительная. Точную стоимость уточняйте в отделе продаж ООО \"РЭД ДРЭГОН\"' in s
+      - name: Verify and commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+          git diff --numstat
+          git status --short
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Update mobile gallery close position and price modal"
+          git push origin main
+      - name: Remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm .github/workflows/apply-price-gallery-update.yml
+          git add .github/workflows/apply-price-gallery-update.yml
+          git commit -m "Remove temporary patch workflow"
+          git push origin main
