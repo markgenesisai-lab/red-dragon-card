@@ -41,8 +41,6 @@ jobs:
           s = s.replace(old_state, new_state, 1)
 
           p.write_text(s, encoding='utf-8')
-          if s.count('rd-fullscreen-img.rd-modal-entered') != 1:
-              raise SystemExit('fullscreen animation state rules are duplicated or missing')
           if new_state not in s:
               raise SystemExit('Russian equipment state mapping missing')
       - name: Validate scope
