@@ -14,11 +14,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Apply exact mobile-only patch
+      - name: Apply exact patch
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "bd4144b828f0be82b3fb1dc580c61e400f1d339c"
+          test "$(git rev-parse HEAD)" = "64647690a8d13d42d983c44a59d968117f3e8d32"
           python3 - <<'PY'
           from pathlib import Path
           p = Path('index.html')
@@ -36,8 +36,14 @@ jobs:
           assert s.count(js_add) == 0, 'JS patch already present'
           s = s.replace(js_marker, js_add + js_marker, 1)
 
+          fn_marker = "function openFeedbackModal(mode,c){"
+          fn_add = "function closeFeedbackModal(){var m=root.querySelector('#rd-feedback-modal');if(m){m.classList.remove('open');m.setAttribute('aria-hidden','true')}} "
+          assert s.count(fn_marker) == 1, 'feedback function marker count mismatch'
+          assert s.count('function closeFeedbackModal(){') == 0, 'feedback helper already present'
+          s = s.replace(fn_marker, fn_add + fn_marker, 1)
+
           p.write_text(s, encoding='utf-8')
-          print('Exact mobile-only condition toggle patch applied.')
+          print('Exact condition toggle plus required missing helper patch applied.')
           PY
           test "$(git diff --name-only)" = "index.html"
           git diff --check
