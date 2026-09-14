@@ -16,29 +16,29 @@ jobs:
           p=Path('index.html'); s=p.read_text(encoding='utf-8')
           old="var nav=root.querySelector('.rd-section-nav');if(nav&&window.matchMedia&&window.matchMedia('(max-width:899px)').matches){"
           new="var nav=root.querySelector('.rd-section-nav');if(nav){"
-          assert s.count(old)==1, f'nav guard count={s.count(old)}'
+          assert s.count(old)==1
           s=s.replace(old,new,1)
           old2="function updateNavPosition(){if(!nav||!navParent)return;var mobile=window.matchMedia&&window.matchMedia('(max-width:899px)').matches;if(!mobile){nav.classList.remove('rd-nav-fixed');navSpacer.classList.remove('rd-nav-spacer-active');navFixed=false;return}var headerH=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h'))||62;"
           new2="function updateNavPosition(){if(!nav||!navParent)return;var headerH=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h'));if(!Number.isFinite(headerH)||headerH<=0)headerH=window.matchMedia&&window.matchMedia('(max-width:899px)').matches?62:72;"
-          assert s.count(old2)==1, f'position function count={s.count(old2)}'
+          assert s.count(old2)==1
           s=s.replace(old2,new2,1)
           old3="@media(max-width:760px){#rd-red-dragon-card .rd-section-nav.rd-nav-fixed{padding:1px 10px}}"
           new3="#rd-red-dragon-card .rd-section-nav.rd-nav-fixed{position:fixed;left:0;right:0;top:var(--rd-nav-top,var(--header-h,72px));z-index:calc(var(--header-z,1000) - 1);margin:0;padding:6px max(10px,calc((100vw - 1152px)/2));background:color-mix(in oklch,var(--rd-bg) 92%,transparent);box-shadow:0 4px 16px rgba(0,0,0,.08)}#rd-red-dragon-card .rd-section-nav.rd-nav-fixed .rd-segment{width:100%;max-width:1152px;margin:0 auto}#rd-red-dragon-card .rd-section-nav-spacer{display:none;height:0}#rd-red-dragon-card .rd-section-nav-spacer.rd-nav-spacer-active{display:block}@media(max-width:760px){#rd-red-dragon-card .rd-section-nav.rd-nav-fixed{padding:1px 10px}}"
-          assert s.count(old3)==1, f'css count={s.count(old3)}'
+          assert s.count(old3)==1
           s=s.replace(old3,new3,1)
           p.write_text(s,encoding='utf-8')
-      - name: Validate scope and contents
+      - name: Validate
         shell: bash
         run: |
           git diff --check
           test "$(git diff --name-only)" = "index.html"
-          grep -F "var nav=root.querySelector('.rd-section-nav');if(nav){" index.html
-          grep -F "#rd-red-dragon-card .rd-section-nav.rd-nav-fixed{position:fixed" index.html
-      - name: Commit only index.html
+      - name: Commit only index.html and remove workflow
         shell: bash
         run: |
           git add index.html
           git rm .github/workflows/_desktop-nav-fix.yml
+          rm -f _trigger.txt
+          git add -u || true
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'fix: copy mobile section navigation mechanism to desktop'
