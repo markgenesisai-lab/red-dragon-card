@@ -28,13 +28,10 @@ jobs:
           git diff --check
           test "$(git diff --name-only)" = "index.html"
           grep -F "RD_DESKTOP_NAV_LAYER" index.html
-      - name: Commit only index.html
+      - name: Commit index.html
         shell: bash
         run: |
           git add index.html
-          git rm .github/workflows/_desktop-nav-fix.yml
-          rm -f _trigger.txt
-          git add -u || true
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'fix: copy mobile section navigation behavior to desktop'
