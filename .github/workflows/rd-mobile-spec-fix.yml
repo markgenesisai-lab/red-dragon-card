@@ -41,6 +41,9 @@ jobs:
           fs='@media(max-width:760px){#rd-red-dragon-card .rd-fullscreen-close{top:64px;right:0;z-index:10}#rd-red-dragon-card .rd-fullscreen-prev{left:max(4px,env(safe-area-inset-left));z-index:10;opacity:1!important;visibility:visible!important}#rd-red-dragon-card .rd-fullscreen-next{right:max(4px,env(safe-area-inset-right));z-index:10;opacity:1!important;visibility:visible!important}#rd-red-dragon-card .rd-fullscreen-img{width:auto!important;height:auto!important;max-width:calc(100vw - 16px)!important;max-height:calc(100vh - 16px)!important;object-fit:contain}}'
           extra='@media(max-width:760px){#rd-red-dragon-card .rd-key-spec-engine-mobile{display:block}#rd-red-dragon-card .rd-key-spec-registration .rd-key-spec-label{white-space:nowrap}#rd-red-dragon-card .rd-price-top{align-items:flex-start}#rd-red-dragon-card .rd-calc-btn{margin-top:21px}}'
           rep(fs,fs+extra,'mobile refinements')
+          s,n=re.subn(r'<div class="rd-mobile-buy">.*?</div></div><div class="rd-modal rd-fullscreen"','<div class="rd-modal rd-fullscreen"',s,count=1,flags=re.S)
+          if n!=1: raise SystemExit(f'mobile buy markup: expected 1, got {n}')
+          s=re.sub(r"root\.querySelectorAll\('\[data-mobile-price-usd\]'\).*?root\.querySelectorAll\('\[data-mobile-price-byn\]'\).*?;",'',s,count=1)
           p.write_text(s,encoding='utf-8')
           PY
           test "$(grep -o 'rd-mobile-buy' index.html | wc -l)" -eq 0
