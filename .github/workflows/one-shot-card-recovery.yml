@@ -18,50 +18,41 @@ jobs:
           subprocess.run(['git','fetch','origin','a62d0ebd61352fbfa8c1a5616dd6909ded4132c5'],check=True)
           subprocess.run(['git','checkout','FETCH_HEAD','--','index.html'],check=True)
           s=p.read_text(encoding='utf-8')
-          assert s.count('function closeFeedbackModal(){')==1, 'baseline closeFeedbackModal must exist exactly once'
+          assert s.count('function closeFeedbackModal(){')==1
           original=s
-
           old='@media(max-width:899px){#rd-red-dragon-card .rd-back-button{right:auto;left:50%;bottom:36px;transform:translateX(-50%)}'
           new='@media(max-width:899px){#rd-red-dragon-card .rd-back-button{right:auto;left:50%;bottom:18px;transform:translateX(-50%)}'
           if old not in s: raise SystemExit('BACK CSS target not found')
           s=s.replace(old,new,1)
-
           marker='@media(max-width:760px){#rd-red-dragon-card .rd-fullscreen-close{top:64px;right:0;z-index:10}'
           reg='@media(max-width:760px){#rd-red-dragon-card .rd-key-spec-registration .rd-key-spec-label svg{transform:translateY(-1px)}}'
           if marker not in s: raise SystemExit('MOBILE CSS anchor not found')
           if reg not in s: s=s.replace(marker,reg+marker,1)
-
           spec_rule='#rd-red-dragon-card .rd-accordion.open .rd-acc-btn{color:var(--rd-accent)}#rd-red-dragon-card .rd-accordion.open .rd-acc-count{color:var(--rd-accent)}#rd-red-dragon-card .rd-accordion.open .rd-acc-btn svg{color:var(--rd-accent)}'
           report_rule='#rd-red-dragon-card .rd-report-accordion.open .rd-report-accordion-trigger{color:var(--rd-accent)}#rd-red-dragon-card .rd-report-accordion.open .rd-report-accordion-meta{color:var(--rd-accent)}#rd-red-dragon-card .rd-report-accordion.open .rd-report-accordion-count{color:var(--rd-accent)}#rd-red-dragon-card .rd-report-accordion.open .rd-report-accordion-indicator{color:var(--rd-accent)}'
           if spec_rule not in s: raise SystemExit('SPEC active rule target not found')
           if report_rule not in s: s=s.replace(spec_rule,spec_rule+report_rule,1)
-
           old_go="function goBack(){if(document.referrer&&document.referrer.indexOf(location.origin)===0&&history.length>1){history.back();return}location.href='/catalog/'}"
           new_go="function goBack(){var modal=root.querySelector('.rd-modal.open');if(modal){closeModal(modal.id);return}var feedback=root.querySelector('#rd-feedback-modal.open');if(feedback){closeFeedbackModal();return}var acc=root.querySelector('.rd-accordion.open');if(acc){var btn=acc.querySelector('.rd-acc-btn');acc.classList.remove('open');if(btn)btn.setAttribute('aria-expanded','false');return}var reportAcc=root.querySelector('.rd-report-accordion.open');if(reportAcc){var rbtn=reportAcc.querySelector('.rd-report-accordion-trigger');reportAcc.classList.remove('open');if(rbtn)rbtn.setAttribute('aria-expanded','false');return}location.href='/catalog/'}"
           if old_go not in s: raise SystemExit('goBack target not found')
           s=s.replace(old_go,new_go,1)
-
           anchor="function closeFeedbackModal(){var m=root.querySelector('#rd-feedback-modal');if(!m)return;m.classList.remove('open');m.setAttribute('aria-hidden','true')}function submitFeedbackForm"
           handler="function handleDeviceBack(){var modal=root.querySelector('.rd-modal.open');if(modal){closeModal(modal.id);return true}var feedback=root.querySelector('#rd-feedback-modal.open');if(feedback){closeFeedbackModal();return true}var reportAcc=root.querySelector('.rd-report-accordion.open');if(reportAcc){var rb=reportAcc.querySelector('.rd-report-accordion-trigger');reportAcc.classList.remove('open');if(rb)rb.setAttribute('aria-expanded','false');return true}var acc=root.querySelector('.rd-accordion.open');if(acc){var ab=acc.querySelector('.rd-acc-btn');acc.classList.remove('open');if(ab)ab.setAttribute('aria-expanded','false');return true}return false} "
           if anchor not in s: raise SystemExit('DEVICE BACK anchor not found')
           if 'function handleDeviceBack(){' in s: raise SystemExit('handleDeviceBack unexpectedly already exists')
           s=s.replace(anchor,handler+anchor,1)
-
           wire_anchor="root.querySelectorAll('.rd-acc-btn').forEach(function(b){b.addEventListener('click',function(){var parent=b.closest('.rd-accordion'),open=!parent.classList.contains('open');parent.classList.toggle('open',open);b.setAttribute('aria-expanded',open?'true':'false')})});"
           wire_insert="window.addEventListener('popstate',function(){if(!handleDeviceBack()){location.href='/catalog/'}});"
           if wire_anchor not in s: raise SystemExit('ACC wire target not found')
           if wire_insert not in s: s=s.replace(wire_anchor,wire_anchor+wire_insert,1)
-
           cond_marker='#rd-red-dragon-card .rd-condition-tooltip strong{display:block;font-size:12px;margin-bottom:8px}'
           cond_css='@media(max-width:760px){#rd-red-dragon-card .rd-condition-hover:hover .rd-condition-tooltip{opacity:0;visibility:hidden;transform:translateY(-3px)}#rd-red-dragon-card .rd-condition-hover.open .rd-condition-tooltip{opacity:1;visibility:visible;transform:none}}'
           if cond_marker not in s: raise SystemExit('CONDITION CSS target not found')
           if cond_css not in s: s=s.replace(cond_marker,cond_marker+cond_css,1)
-
           cond_js_marker="root.querySelectorAll('[data-photo-filter]').forEach(function(b){b.addEventListener('click',function(){setPhotoFilter(b.getAttribute('data-photo-filter'),true)})});"
           cond_js="root.querySelectorAll('.rd-condition-hover .rd-chip-condition').forEach(function(b){b.addEventListener('click',function(e){if(!window.matchMedia||!window.matchMedia('(max-width:760px)').matches)return;e.preventDefault();e.stopPropagation();var h=b.closest('.rd-condition-hover'),open=h&&h.classList.contains('open');root.querySelectorAll('.rd-condition-hover.open').forEach(function(x){x.classList.remove('open')});if(h&&!open)h.classList.add('open')})});"
           if cond_js_marker not in s: raise SystemExit('CONDITION JS target not found')
           if cond_js not in s: s=s.replace(cond_js_marker,cond_js+cond_js_marker,1)
-
           if 'rd-mobile-buy' in s: raise SystemExit('Unexpected mobile-buy code remains')
           assert s.count('function closeFeedbackModal(){')==1
           assert s.count('function handleDeviceBack(){')==1
@@ -71,7 +62,6 @@ jobs:
           assert wire_insert in s
           assert 'bottom:18px' in s
           p.write_text(s,encoding='utf-8')
-
           out=p.read_text(encoding='utf-8')
           js=re.search(r'<script>([\s\S]*)</script>\s*$',out)
           if not js: raise SystemExit('SCRIPT BLOCK NOT FOUND')
@@ -88,6 +78,11 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
           git diff --cached --check
-          test "$(git diff --cached --name-only)" = "index.html"
+          names="$(git diff --cached --name-only | sort)"
+          expected=".github/rd-mobile-condition-trigger.txt
+.github/workflows/one-shot-card-recovery.yml
+.github/workflows/rd-mobile-condition-toggle.yml
+index.html"
+          test "$names" = "$expected"
           git commit -m 'fix: restore working card and requested mobile changes'
           git push
