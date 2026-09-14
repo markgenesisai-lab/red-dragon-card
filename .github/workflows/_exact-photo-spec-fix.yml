@@ -1,0 +1,70 @@
+name: Exact photo/spec fix
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Apply exact fixes
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          old_base = '#rd-red-dragon-card .rd-fullscreen-img{transition:opacity .2s ease,transform .35s cubic-bezier(.22,1,.36,1);will-change:opacity,transform;user-select:none;-webkit-user-drag:none}'
+          new_base = '#rd-red-dragon-card .rd-fullscreen-img{position:absolute;max-width:92vw;max-height:88vh;opacity:0;transform:translateX(100%);object-fit:contain;border-radius:10px;user-select:none;-webkit-user-drag:none}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-current{z-index:2;opacity:1;transform:translateX(0)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-enter-left,#rd-red-dragon-card .rd-fullscreen-img.rd-modal-enter-right{z-index:3;opacity:1;transition:none}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-enter-left{transform:translateX(-100%)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-enter-right{transform:translateX(100%)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-entered{transform:translateX(0);transition:transform .42s cubic-bezier(.22,1,.36,1)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-exit-left,#rd-red-dragon-card .rd-fullscreen-img.rd-modal-exit-right{z-index:2;opacity:1;transition:transform .42s cubic-bezier(.22,1,.36,1)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-exit-left{transform:translateX(-100%)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-exit-right{transform:translateX(100%)}'
+          if s.count(old_base) != 1:
+              raise SystemExit(f'base fullscreen rule count={s.count(old_base)}')
+          s = s.replace(old_base, new_base, 1)
+
+          desktop1 = '@media(min-width:900px){#rd-red-dragon-card .rd-fullscreen-img{position:absolute;max-width:92vw;max-height:88vh;object-fit:contain;border-radius:10px;user-select:none;-webkit-user-drag:none}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-current{z-index:2;opacity:1;transform:translateX(0)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-enter-left,#rd-red-dragon-card .rd-fullscreen-img.rd-modal-enter-right{z-index:3;opacity:1;transition:none}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-enter-left{transform:translateX(-100%)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-enter-right{transform:translateX(100%)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-entered{transform:translateX(0);transition:transform .42s cubic-bezier(.22,1,.36,1)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-exit-left,#rd-red-dragon-card .rd-fullscreen-img.rd-modal-exit-right{z-index:2;opacity:1;transition:transform .42s cubic-bezier(.22,1,.36,1)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-exit-left{transform:translateX(-100%)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-exit-right{transform:translateX(100%)}}'
+          desktop2 = '@media(min-width:900px){#rd-red-dragon-card .rd-fullscreen-img.rd-modal-enter-left,#rd-red-dragon-card .rd-fullscreen-img.rd-modal-enter-right{z-index:3;opacity:1;transition:none}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-enter-left{transform:translateX(-100%)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-enter-right{transform:translateX(100%)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-entered{transform:translateX(0);transition:transform .32s cubic-bezier(.22,1,.36,1)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-exit-left,#rd-red-dragon-card .rd-fullscreen-img.rd-modal-exit-right{z-index:2;opacity:1;transition:transform .32s cubic-bezier(.22,1,.36,1)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-exit-left{transform:translateX(-100%)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-exit-right{transform:translateX(100%)}}'
+          if s.count(desktop1) != 1 or s.count(desktop2) != 1:
+              raise SystemExit(f'desktop block counts: {s.count(desktop1)}, {s.count(desktop2)}')
+          s = s.replace(desktop1, '', 1).replace(desktop2, '', 1)
+
+          mobile_full = '@media(max-width:760px){#rd-red-dragon-card .rd-fullscreen-close{top:64px;right:0;z-index:10}#rd-red-dragon-card .rd-fullscreen-prev{left:max(4px,env(safe-area-inset-left));z-index:10;opacity:1!important;visibility:visible!important}#rd-red-dragon-card .rd-fullscreen-next{right:max(4px,env(safe-area-inset-right));z-index:10;opacity:1!important;visibility:visible!important}#rd-red-dragon-card .rd-fullscreen-img{width:auto!important;height:auto!important;max-width:calc(100vw - 16px)!important;max-height:calc(100vh - 16px)!important;object-fit:contain}}'
+          if s.count(mobile_full) != 1:
+              raise SystemExit(f'mobile sizing block count={s.count(mobile_full)}')
+
+          old_state = '<div class="rd-equipment-state '+st[0]+'"><span>'+esc(x.value||st[1])+'</span></div>'
+          new_state = '<div class="rd-equipment-state '+st[0]+'"><span>'+esc(st[0]===\'unknown\'?(x.value||st[1]):st[1])+'</span></div>'
+          if s.count(old_state) != 1:
+              raise SystemExit(f'equipment state render count={s.count(old_state)}')
+          s = s.replace(old_state, new_state, 1)
+
+          p.write_text(s, encoding='utf-8')
+
+          if 'transition:transform .32s cubic-bezier(.22,1,.36,1)' in s:
+              raise SystemExit('old desktop .32s animation remains')
+          if s.count('rd-fullscreen-img.rd-modal-entered') != 1:
+              raise SystemExit('fullscreen animation state rules are duplicated or missing')
+          if 'esc(st[0]===\'unknown\'?(x.value||st[1]):st[1])' not in s:
+              raise SystemExit('Russian equipment state mapping missing')
+      - name: Validate scope
+        shell: bash
+        run: |
+          git diff --check
+          git status --short
+          test "$(git status --short | grep -v '^ D ' | grep -v '^?? .github/workflows/_exact-photo-spec-fix.yml' | wc -l)" -eq 1
+          test "$(git status --short | grep 'index.html' | wc -l)" -eq 1
+      - name: Remove helper and commit final file
+        shell: bash
+        run: |
+          git add index.html
+          git rm .github/workflows/_exact-photo-spec-fix.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Fix fullscreen photo animation and Russian equipment states'
+          git push
