@@ -21,14 +21,12 @@ jobs:
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
 
-          old_css = '#rd-red-dragon-card .rd-fullscreen-img.rd-modal-enter-left,#rd-red-dragon-card .rd-fullscreen-img.rd-modal-enter-right{z-index:3;opacity:1;transition:none}'
-          if old_css in s:
-              raise SystemExit('unexpected existing desktop fullscreen rule')
-
           anchor = '#rd-red-dragon-card .rd-fullscreen-img{transition:opacity .2s ease,transform .35s cubic-bezier(.22,1,.36,1);will-change:opacity,transform;user-select:none;-webkit-user-drag:none}'
           desktop_css = '@media(min-width:900px){#rd-red-dragon-card .rd-fullscreen-img.rd-modal-enter-left,#rd-red-dragon-card .rd-fullscreen-img.rd-modal-enter-right{z-index:3;opacity:1;transition:none}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-enter-left{transform:translateX(-100%)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-enter-right{transform:translateX(100%)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-entered{transform:translateX(0);transition:transform .32s cubic-bezier(.22,1,.36,1)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-exit-left,#rd-red-dragon-card .rd-fullscreen-img.rd-modal-exit-right{z-index:2;opacity:1;transition:transform .32s cubic-bezier(.22,1,.36,1)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-exit-left{transform:translateX(-100%)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-exit-right{transform:translateX(100%)}}'
           if s.count(anchor) != 1:
               raise SystemExit(f'fullscreen CSS anchor count={s.count(anchor)}, expected 1')
+          if '@media(min-width:900px){#rd-red-dragon-card .rd-fullscreen-img.rd-modal-enter-left' in s:
+              raise SystemExit('desktop fullscreen CSS already present')
           s = s.replace(anchor, anchor + desktop_css, 1)
 
           old_js = "}else if(mn&&isMobile){mn.onload=function(){if(token2!==__rdGalleryChangeToken)return;mn.classList.remove('rd-modal-current','rd-modal-exit-left','rd-modal-exit-right','rd-modal-enter-left','rd-modal-enter-right','rd-modal-entered');mn.classList.add(dir>0?'rd-modal-enter-right':'rd-modal-enter-left');void mn.offsetWidth;mn.classList.add('rd-modal-entered');var old=mi;old.classList.remove('rd-modal-current');old.classList.add(dir>0?'rd-modal-exit-left':'rd-modal-exit-right');setTimeout(function(){if(token2!==__rdGalleryChangeToken)return;old.classList.remove('rd-modal-exit-left','rd-modal-exit-right');mn.classList.remove('rd-modal-enter-left','rd-modal-enter-right','rd-modal-entered');mn.classList.add('rd-modal-current');old.src='' },450)};mn.src=u}else mi.src=u"
@@ -47,8 +45,6 @@ jobs:
           PY
 
           git diff --check
-          git diff -- index.html
-
           test "$(git diff --name-only)" = "index.html" || { echo 'Unexpected changed files'; git diff --name-only; exit 1; }
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
