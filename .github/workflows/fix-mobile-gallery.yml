@@ -3,6 +3,8 @@ on:
   push:
     paths:
       - '.github/workflows/fix-mobile-gallery.yml'
+permissions:
+  contents: write
 jobs:
   patch:
     runs-on: ubuntu-latest
@@ -14,14 +16,10 @@ jobs:
           from pathlib import Path
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
-          old1 = 'photos.map(function(u,i){return\'<button class="rd-slide" data-photo-index="\'+i+\'" type="button" aria-label="Открыть фото \'+(i+1)+\' во весь экран"><img \'+(i?\'loading="lazy"\':\'loading="eager"\')+\' src="\'+esc(u)+\'" alt="\'+esc(title)+\' — фото \'+(i+1)+\'" draggable="false"></button>\'}).join(\'\')'
-          new1 = 'photos.map(function(u,i){return\'<button class="rd-slide" data-photo-index="\'+i+\'" type="button" aria-label="Открыть фото \'+(i+1)+\' во весь экран"><img loading="eager" decoding="async" src="\'+esc(u)+\'" alt="\'+esc(title)+\' — фото \'+(i+1)+\'" draggable="false"></button>\'}).join(\'\')'
+          old1 = 'photos.map(function(u,i){return\'<button class="rd-slide" data-photo-index="\'+i+\'" type="button" aria-label="Открыть фото \'+(i+1)+\' во весь экран"><img \'+(i?\'loading="lazy"\':\'loading="eager"\')+\' src="\'+esc(u)+'\" alt="\'+esc(title)+' — фото \'+(i+1)+\'" draggable="false"></button>\'}).join(\'\')'
+          new1 = 'photos.map(function(u,i){return\'<button class="rd-slide" data-photo-index="\'+i+\'" type="button" aria-label="Открыть фото \'+(i+1)+\' во весь экран"><img loading="eager" decoding="async" src="\'+esc(u)+'\" alt="\'+esc(title)+' — фото \'+(i+1)+\'" draggable="false"></button>\'}).join(\'\')'
           if old1 not in s: raise SystemExit('gallery image loading pattern not found')
           s=s.replace(old1,new1,1)
-          old2 = '#rd-red-dragon-card .rd-fullscreen-close,#rd-red-dragon-card .rd-fullscreen-prev,#rd-red-dragon-card .rd-fullscreen-next{position:absolute;z-index:2;'
-          new2 = '#rd-red-dragon-card .rd-fullscreen-close,#rd-red-dragon-card .rd-fullscreen-prev,#rd-red-dragon-card .rd-fullscreen-next{position:absolute;z-index:2;'
-          # Existing rule retained; mobile override below raises controls above the animated images.
-          if old2 not in s: raise SystemExit('fullscreen control rule not found')
           old3 = '@media(max-width:899px){html,body{overflow-x:hidden!important;max-width:100%;}'
           inject = '@media(max-width:760px){#rd-red-dragon-card .rd-fullscreen-close{top:max(4px,env(safe-area-inset-top));right:max(4px,env(safe-area-inset-right));z-index:10}#rd-red-dragon-card .rd-fullscreen-prev{left:max(4px,env(safe-area-inset-left));z-index:10;opacity:1!important;visibility:visible!important}#rd-red-dragon-card .rd-fullscreen-next{right:max(4px,env(safe-area-inset-right));z-index:10;opacity:1!important;visibility:visible!important}#rd-red-dragon-card .rd-fullscreen-img{width:auto!important;height:auto!important;max-width:calc(100vw - 16px)!important;max-height:calc(100vh - 16px)!important;object-fit:contain}}'
           if inject not in s:
@@ -37,7 +35,6 @@ jobs:
           if old5 not in s: raise SystemExit('wire initialization marker not found')
           s=s.replace(old5,new5,1)
           p.write_text(s,encoding='utf-8')
-          print('index.html patched')
       - name: Verify only index.html and mobile gallery changes
         shell: bash
         run: |
