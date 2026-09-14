@@ -34,24 +34,18 @@ jobs:
               raise SystemExit(f'desktop block counts: {s.count(desktop1)}, {s.count(desktop2)}')
           s = s.replace(desktop1, '', 1).replace(desktop2, '', 1)
 
-          old_state = "<div class=\"rd-equipment-state \"+st[0]+\"><span>\"+esc(x.value||st[1])+\"</span></div>"
-          new_state = "<div class=\"rd-equipment-state \"+st[0]+\"><span>\"+esc(st[0]==='unknown'?(x.value||st[1]):st[1])+\"</span></div>"
-          if s.count(old_state) != 0:
-              s = s.replace(old_state, new_state, 1)
-          else:
-              old_state = '<div class="rd-equipment-state \'+st[0]+\"><span>\'+esc(x.value||st[1])+\'</span></div>'
-              new_state = '<div class="rd-equipment-state \'+st[0]+\"><span>\'+esc(st[0]===\'unknown\'?(x.value||st[1]):st[1])+\'</span></div>'
-              if s.count(old_state) != 1:
-                  raise SystemExit(f'equipment state render count={s.count(old_state)}')
-              s = s.replace(old_state, new_state, 1)
+          old_state = "esc(x.value||st[1])"
+          new_state = "esc(st[0]==='unknown'?(x.value||st[1]):st[1])"
+          if s.count(old_state) != 1:
+              raise SystemExit(f'equipment state value count={s.count(old_state)}')
+          s = s.replace(old_state, new_state, 1)
 
           p.write_text(s, encoding='utf-8')
-
           if 'transition:transform .32s cubic-bezier(.22,1,.36,1)' in s:
               raise SystemExit('old desktop .32s animation remains')
           if s.count('rd-fullscreen-img.rd-modal-entered') != 1:
               raise SystemExit('fullscreen animation state rules are duplicated or missing')
-          if "esc(st[0]===\'unknown\'?(x.value||st[1]):st[1])" not in s:
+          if new_state not in s:
               raise SystemExit('Russian equipment state mapping missing')
       - name: Validate scope
         shell: bash
