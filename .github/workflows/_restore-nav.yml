@@ -1,0 +1,36 @@
+name: Restore nav observer
+on:
+  push:
+    branches: [codex-restore-nav-observer-20260914]
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Patch index.html only
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          old = "if('IntersectionObserver' in window){var ids=['photos','car-specs','inspection','equipment','price-history'],obs=new IntersectionObserver(function(entries){if(window.matchMedia&&window.matchMedia('(min-width:900px)').matches)return;entries.forEach(function(entry){if(!entry.isIntersecting)return;var id=entry.target.id;root.querySelectorAll('.rd-nav-item').forEach(function(b){var sel=b.getAttribute('data-target')===id;b.classList.toggle('sel',sel);b.setAttribute('aria-checked',sel?'true':'false')})})},{rootMargin:'-45% 0px -45% 0px',threshold:0});ids.forEach(function(id){var el=root.querySelector('#'+id);if(el)obs.observe(el)});if(window.matchMedia&&window.matchMedia('(min-width:900px)').matches){var desktopNavRaf=0;function setDesktopNav(target){root.querySelectorAll('.rd-nav-item').forEach(function(b){var sel=b.getAttribute('data-target')===target;b.classList.toggle('sel',sel);b.setAttribute('aria-checked',sel?'true':'false')})}function updateDesktopNav(){desktopNavRaf=0;if(!window.matchMedia||!window.matchMedia('(min-width:900px)').matches)return;var nav=root.querySelector('.rd-section-nav'),items=root.querySelectorAll('.rd-nav-item');if(!nav||!items.length)return;var threshold=nav.getBoundingClientRect().bottom+18,active='photos';ids.forEach(function(id){var el=root.querySelector('#'+id);if(el&&el.getBoundingClientRect().top<=threshold)active=id});setDesktopNav(active)}function scheduleDesktopNav(){if(!desktopNavRaf)desktopNavRaf=requestAnimationFrame(updateDesktopNav)}window.addEventListener('scroll',scheduleDesktopNav,{passive:true});window.addEventListener('resize',scheduleDesktopNav,{passive:true});setDesktopNav('photos');requestAnimationFrame(updateDesktopNav)}}"
+          new = "if('IntersectionObserver' in window){var ids=['photos','car-specs','inspection','equipment','price-history'],obs=new IntersectionObserver(function(entries){entries.forEach(function(entry){if(!entry.isIntersecting)return;var id=entry.target.id;root.querySelectorAll('.rd-nav-item').forEach(function(b){var sel=b.getAttribute('data-target')===id;b.classList.toggle('sel',sel);b.setAttribute('aria-checked',sel?'true':'false')})})},{rootMargin:'-45% 0px -45% 0px',threshold:0});ids.forEach(function(id){var el=root.querySelector('#'+id);if(el)obs.observe(el)})}"
+          assert s.count(old) == 1, f'expected one current nav block, found {s.count(old)}'
+          s = s.replace(old, new, 1)
+          p.write_text(s, encoding='utf-8')
+      - name: Verify and self-remove
+        shell: bash
+        run: |
+          grep -F "var ids=['photos','car-specs','inspection','equipment','price-history'],obs=new IntersectionObserver(function(entries){entries.forEach" index.html
+          ! grep -F "function updateDesktopNav()" index.html
+          rm -f .github/workflows/_restore-nav.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html .github/workflows/_restore-nav.yml
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: restore section navigation observer"
+          git push
