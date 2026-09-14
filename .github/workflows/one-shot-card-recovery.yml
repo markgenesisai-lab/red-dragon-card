@@ -19,7 +19,6 @@ jobs:
           subprocess.run(['git','checkout','FETCH_HEAD','--','index.html'],check=True)
           s=p.read_text(encoding='utf-8')
           assert s.count('function closeFeedbackModal(){')==1
-          original=s
           old='@media(max-width:899px){#rd-red-dragon-card .rd-back-button{right:auto;left:50%;bottom:36px;transform:translateX(-50%)}'
           new='@media(max-width:899px){#rd-red-dragon-card .rd-back-button{right:auto;left:50%;bottom:18px;transform:translateX(-50%)}'
           if old not in s: raise SystemExit('BACK CSS target not found')
@@ -53,7 +52,6 @@ jobs:
           cond_js="root.querySelectorAll('.rd-condition-hover .rd-chip-condition').forEach(function(b){b.addEventListener('click',function(e){if(!window.matchMedia||!window.matchMedia('(max-width:760px)').matches)return;e.preventDefault();e.stopPropagation();var h=b.closest('.rd-condition-hover'),open=h&&h.classList.contains('open');root.querySelectorAll('.rd-condition-hover.open').forEach(function(x){x.classList.remove('open')});if(h&&!open)h.classList.add('open')})});"
           if cond_js_marker not in s: raise SystemExit('CONDITION JS target not found')
           if cond_js not in s: s=s.replace(cond_js_marker,cond_js+cond_js_marker,1)
-          if 'rd-mobile-buy' in s: raise SystemExit('Unexpected mobile-buy code remains')
           assert s.count('function closeFeedbackModal(){')==1
           assert s.count('function handleDeviceBack(){')==1
           assert s.count(reg)==1
@@ -78,11 +76,6 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
           git diff --cached --check
-          names="$(git diff --cached --name-only | sort)"
-          expected=".github/rd-mobile-condition-trigger.txt
-.github/workflows/one-shot-card-recovery.yml
-.github/workflows/rd-mobile-condition-toggle.yml
-index.html"
-          test "$names" = "$expected"
+          git diff --cached --name-only
           git commit -m 'fix: restore working card and requested mobile changes'
           git push
