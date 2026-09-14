@@ -18,44 +18,30 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "64647690a8d13d42d983c44a59d968117f3e8d32"
+          test "$(git rev-parse HEAD)" = "945cf6a24e43818e4a681dafe5bea48f6cdd6990"
           python3 - <<'PY'
           from pathlib import Path
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
-
-          css_marker = '#rd-red-dragon-card .rd-condition-tooltip strong{display:block;font-size:12px;margin-bottom:8px}'
-          css_add = '@media(max-width:760px){#rd-red-dragon-card .rd-condition-hover:hover .rd-condition-tooltip{opacity:0;visibility:hidden;transform:translateY(-3px)}#rd-red-dragon-card .rd-condition-hover.open .rd-condition-tooltip{opacity:1;visibility:visible;transform:none}}'
-          assert s.count(css_marker) == 1, 'CSS marker count mismatch'
-          assert s.count(css_add) == 0, 'CSS patch already present'
-          s = s.replace(css_marker, css_marker + css_add, 1)
-
-          js_marker = "root.querySelectorAll('[data-photo-filter]').forEach(function(b){b.addEventListener('click',function(){setPhotoFilter(b.getAttribute('data-photo-filter'),true)})});"
-          js_add = "root.querySelectorAll('.rd-condition-hover .rd-chip-condition').forEach(function(b){b.addEventListener('click',function(e){if(!window.matchMedia||!window.matchMedia('(max-width:760px)').matches)return;e.preventDefault();e.stopPropagation();var h=b.closest('.rd-condition-hover'),open=h&&h.classList.contains('open');root.querySelectorAll('.rd-condition-hover.open').forEach(function(x){x.classList.remove('open')});if(h&&!open)h.classList.add('open')})});"
-          assert s.count(js_marker) == 1, 'JS marker count mismatch'
-          assert s.count(js_add) == 0, 'JS patch already present'
-          s = s.replace(js_marker, js_add + js_marker, 1)
-
           fn_marker = "function openFeedbackModal(mode,c){"
           fn_add = "function closeFeedbackModal(){var m=root.querySelector('#rd-feedback-modal');if(m){m.classList.remove('open');m.setAttribute('aria-hidden','true')}} "
           assert s.count(fn_marker) == 1, 'feedback function marker count mismatch'
           assert s.count('function closeFeedbackModal(){') == 0, 'feedback helper already present'
           s = s.replace(fn_marker, fn_add + fn_marker, 1)
-
           p.write_text(s, encoding='utf-8')
-          print('Exact condition toggle plus required missing helper patch applied.')
+          print('Added only the missing feedback modal close helper.')
           PY
           test "$(git diff --name-only)" = "index.html"
           git diff --check
-      - name: Commit patch and remove workflow
+      - name: Commit patch and remove temporary files
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git rm .github/workflows/rd-mobile-condition-toggle.yml
+          git rm .github/workflows/rd-mobile-condition-toggle.yml .github/rd-mobile-condition-trigger.txt
           test "$(git diff --name-only)" = "index.html"
           git add index.html
           git diff --cached --check
-          git commit -m "fix: close mobile condition scale on repeat tap"
+          git commit -m "fix: restore card loading and mobile condition toggle"
           git push
