@@ -1,0 +1,46 @@
+name: _fix-hybrid-pricing
+on:
+  push:
+    paths:
+      - '.github/workflows/_fix-hybrid-pricing.yml'
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch only index.html
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          old = "function sourceDisplacement(c){var s=c&&c.specs&&typeof c.specs==='object'?c.specs:{},v=c&&c.displacement!=null?c.displacement:s.displacement;if(v==null||v==='')v=c&&c.engineVolume!=null?c.engineVolume:c&&c.engine_volume!=null?c.engine_volume:s.engineVolume??s.engine_volume;if(typeof v==='string')v=v.trim().replace(',','.').replace(/\\s*(cc|cm3|см3|л)\\s*$/i,'');var n=Number(v);if(!Number.isFinite(n)||n<=0)return null;if(n<20)n*=1000;return n}"
+          new = "function sourceDisplacement(c){var s=c&&c.specs&&typeof c.specs==='object'?c.specs:{},candidates=[c&&c.displacement,s.displacement,c&&c.engineVolume,c&&c.engine_volume,s.engineVolume,s.engine_volume];for(var i=0;i<candidates.length;i++){var v=candidates[i];if(v==null||String(v).trim()==='')continue;if(typeof v==='string')v=v.trim().replace(',','.').replace(/\\s*(cc|cm3|см3|л)\\s*$/i,'');var n=Number(v);if(!Number.isFinite(n)||n<=0)continue;if(n<20)n*=1000;return n}return null}"
+          if old not in s:
+              raise SystemExit('sourceDisplacement pattern not found')
+          s = s.replace(old, new, 1)
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Verify and commit
+        shell: bash
+        run: |
+          test "$(git diff --name-only)" = "index.html"
+          grep -F "function sourceDisplacement(c){var s=c&&c.specs" index.html >/dev/null
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix: use valid engine displacement for hybrid pricing'
+          git push
+      - name: Remove temporary workflow
+        if: always()
+        shell: bash
+        run: |
+          rm -f .github/workflows/_fix-hybrid-pricing.yml
+          git add -u .github/workflows/_fix-hybrid-pricing.yml || true
+          if ! git diff --cached --quiet; then
+            git commit -m 'chore: remove temporary hybrid pricing workflow'
+            git push
+          fi
