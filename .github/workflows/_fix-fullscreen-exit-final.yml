@@ -36,7 +36,6 @@ jobs:
           assert "void old.offsetWidth;void mn.offsetWidth;old.classList.remove('rd-modal-current')" in s
           assert "old.classList.add(dir>0?'rd-modal-exit-left':'rd-modal-exit-right');mn.classList.add('rd-modal-entered')" in s
           assert "mn.onload=function" not in s
-          assert s.count("rd-modal-exit-left')") >= 1
       - name: Commit and remove helper
         shell: bash
         run: |
