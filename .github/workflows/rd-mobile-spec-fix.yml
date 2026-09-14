@@ -16,39 +16,36 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
-          p=Path('index.html'); s=p.read_text(encoding='utf-8')
-          def once(old,new,label):
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          def rep(old,new,label):
+              global s
               n=s.count(old)
               if n!=1: raise SystemExit(f'{label}: expected 1, got {n}')
-              return s.replace(old,new,1)
-          s=once('#rd-red-dragon-card .rd-fullscreen-close{top:20px;right:max(2px,env(safe-area-inset-right));z-index:10}','#rd-red-dragon-card .rd-fullscreen-close{top:64px;right:0;z-index:10}','fullscreen close')
-          s=once('#rd-red-dragon-card .rd-back-button{right:auto;left:50%;bottom:76px;transform:translateX(-50%)}','#rd-red-dragon-card .rd-back-button{right:auto;left:50%;bottom:36px;transform:translateX(-50%)}','back button')
-          mobile_css='#rd-red-dragon-card .rd-mobile-buy{position:fixed;left:0;right:0;bottom:0;z-index:80;display:none;padding:9px 10px calc(9px +env(safe-area-inset-bottom));background:color-mix(in oklch,var(--rd-surface) 92%,transparent);backdrop-filter:blur(12px);border-top:1px solid var(--rd-border)}#rd-red-dragon-card .rd-mobile-buy-inner{width:min(1152px,100%);margin:0 auto;display:flex;align-items:center;gap:12px}#rd-red-dragon-card .rd-mobile-buy-price{min-width:0;flex:1}#rd-red-dragon-card .rd-mobile-buy-price small{display:block;color:var(--rd-muted);font-size:10px}#rd-red-dragon-card .rd-mobile-buy-price strong{display:block;margin-top:1px;color:var(--rd-accent);font-size:18px;line-height:20px}#rd-red-dragon-card .rd-mobile-buy-byn{display:block;margin-top:1px;color:var(--rd-muted);font-size:11px;line-height:15px;font-weight:600}#rd-red-dragon-card .rd-mobile-buy .rd-primary{width:auto;min-width:150px}'
-          s=once(mobile_css,'','mobile buy css')
-          s=once('@media(max-width:899px){#rd-red-dragon-card{padding-bottom:84px}#rd-red-dragon-card .rd-mobile-buy{display:block}}','@media(max-width:899px){#rd-red-dragon-card{padding-bottom:0}}','mobile padding')
-          mobile_markup='''<div class="rd-mobile-buy"><div class="rd-mobile-buy-inner"><div class="rd-mobile-buy-price"><small>Цена в '+sourceCountryName(c)+'</small><strong data-mobile-price-usd>'+esc(priceData(c).sourceUsd!=null?usd(priceData(c).sourceUsd):'—')+'</strong><span class="rd-mobile-buy-byn" data-mobile-price-byn>'+esc(priceData(c).sourceByn!=null?bynText(priceData(c).sourceByn):'—')+'</span></div><button class="rd-primary" type="button" data-request>Узнать детали</button></div></div>'''
-          s=once(mobile_markup,'','mobile buy markup')
-          route_old='''route:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="3"/><circle cx="18" cy="6" r="3"/><path d="M9 18h5a4 4 0 0 0 0-8H10a4 4 0 0 1 0-8"/></svg>''''
-          route_new='''route:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9v1a4 4 0 0 1-4 4h-4a4 4 0 0 0-4 4"/></svg>''''
-          s=once(route_old,route_new,'mileage icon')
-          s=once("['Привод',drive(s.drive||c.drive),'circle']","['Привод',drive(s.drive||c.drive),'drive']",'drive row')
-          anchor=route_new+',fuel:'
-          drive_icon='''drive:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="7" r="2"/><circle cx="18" cy="7" r="2"/><circle cx="6" cy="17" r="2"/><circle cx="18" cy="17" r="2"/><path d="M8 7h8M8 17h8M6 9v6M18 9v6"/></svg>',fuel:'''
-          s=once(anchor,route_new+', '+drive_icon,'drive icon')
-          engine='''<div class="rd-key-spec rd-key-spec-engine-mobile"><div class="rd-key-spec-label">'+(I.cylinder||'')+'<span>Объём двигателя</span></div><div class="rd-key-spec-value">'+esc(engineLabel(c))+'</div></div>'''
-          s=once('</section><dl class="rd-spec-list">',engine+'</section><dl class="rd-spec-list">','mobile engine')
-          keycss='#rd-red-dragon-card .rd-key-spec-label{display:flex;align-items:center;gap:6px;min-width:0;color:var(--rd-muted);font-size:11px;line-height:14px}'
-          s=once(keycss,keycss+'#rd-red-dragon-card .rd-key-spec-engine-mobile{display:none}','engine css')
+              s=s.replace(old,new,1)
+          rep('#rd-red-dragon-card .rd-fullscreen-close{top:20px;right:max(2px,env(safe-area-inset-right));z-index:10}','#rd-red-dragon-card .rd-fullscreen-close{top:64px;right:0;z-index:10}','fullscreen close')
+          rep('#rd-red-dragon-card .rd-back-button{right:auto;left:50%;bottom:76px;transform:translateX(-50%)}','#rd-red-dragon-card .rd-back-button{right:auto;left:50%;bottom:36px;transform:translateX(-50%)}','back button')
+          rep('#rd-red-dragon-card .rd-mobile-buy{position:fixed;left:0;right:0;bottom:0;z-index:80;display:none;padding:9px 10px calc(9px +env(safe-area-inset-bottom));background:color-mix(in oklch,var(--rd-surface) 92%,transparent);backdrop-filter:blur(12px);border-top:1px solid var(--rd-border)}#rd-red-dragon-card .rd-mobile-buy-inner{width:min(1152px,100%);margin:0 auto;display:flex;align-items:center;gap:12px}#rd-red-dragon-card .rd-mobile-buy-price{min-width:0;flex:1}#rd-red-dragon-card .rd-mobile-buy-price small{display:block;color:var(--rd-muted);font-size:10px}#rd-red-dragon-card .rd-mobile-buy-price strong{display:block;margin-top:1px;color:var(--rd-accent);font-size:18px;line-height:20px}#rd-red-dragon-card .rd-mobile-buy-byn{display:block;margin-top:1px;color:var(--rd-muted);font-size:11px;line-height:15px;font-weight:600}#rd-red-dragon-card .rd-mobile-buy .rd-primary{width:auto;min-width:150px}','','mobile buy css')
+          rep('@media(max-width:899px){#rd-red-dragon-card{padding-bottom:84px}#rd-red-dragon-card .rd-mobile-buy{display:block}}','','mobile buy media')
+          rep("['Привод',drive(s.drive||c.drive),'circle']","['Привод',drive(s.drive||c.drive),'drive']",'drive row')
+          old="route:" + "'" + '<svg viewBox="24"'  # sentinel, replaced below using regex
+          pat=r"route:'<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"6\" cy=\"18\" r=\"3\"/><circle cx=\"18\" cy=\"6\" r=\"3\"/><path d=\"M9 18h5a4 4 0 0 0 0-8H10a4 4 0 0 1 0-8\"/></svg>'"
+          new="route:'<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"6\" cy=\"18\" r=\"3\"/><circle cx=\"18\" cy=\"6\" r=\"3\"/><path d=\"M18 9v1a4 4 0 0 1-4 4h-4a4 4 0 0 0-4 4\"/></svg>'"
+          s,n=re.subn(pat,new,s,count=1)
+          if n!=1: raise SystemExit(f'mileage icon: expected 1, got {n}')
+          rep("circle:'<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"8\"/></svg>'","circle:'<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"8\"/></svg>',drive:'<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"6\" cy=\"7\" r=\"2\"/><circle cx=\"18\" cy=\"7\" r=\"2\"/><circle cx=\"6\" cy=\"17\" r=\"2\"/><circle cx=\"18\" cy=\"17\" r=\"2\"/><path d=\"M8 7h8M8 17h8M6 9v6M18 9v6\"/></svg>'","drive icon")
+          rep("['КПП',gearbox(s.gearbox||c.gearbox),'settings'],['Тип кузова',bodyType(s.body||c.body),'car']","['КПП',gearbox(s.gearbox||c.gearbox),'settings'],['Тип кузова',bodyType(s.body||c.body),'car'],['Объём двигателя',engineLabel(c),'cylinder']",'engine key row')
+          s=s.replace("+(r[0]==='Регистрация'?' rd-key-spec-registration':'')+'", "+(r[0]==='Регистрация'?' rd-key-spec-registration':'')+(r[0]==='Объём двигателя'?' rd-key-spec-engine-mobile':'')+"+'", 1)
+          rep('#rd-red-dragon-card .rd-key-spec-label{display:flex;align-items:center;gap:6px;min-width:0;color:var(--rd-muted);font-size:11px;line-height:14px}', '#rd-red-dragon-card .rd-key-spec-label{display:flex;align-items:center;gap:6px;min-width:0;color:var(--rd-muted);font-size:11px;line-height:14px}#rd-red-dragon-card .rd-key-spec-engine-mobile{display:none}', 'engine css')
           acc='#rd-red-dragon-card .rd-acc-btn svg{width:16px;height:16px;color:var(--rd-muted);transition:transform .18s ease}#rd-red-dragon-card .rd-accordion.open .rd-acc-btn svg{transform:rotate(180deg)}'
-          acc2=acc+'#rd-red-dragon-card .rd-accordion.open .rd-acc-btn{color:var(--rd-accent)}#rd-red-dragon-card .rd-accordion.open .rd-acc-count{color:var(--rd-accent)}#rd-red-dragon-card .rd-accordion.open .rd-acc-btn svg{color:var(--rd-accent)}'
-          s=once(acc,acc2,'accordion active')
-          s=once("<div class=\"rd-equipment-state '+st[0]+'\">'+st[2]+'<span>","<div class=\"rd-equipment-state '+st[0]+'\"><span>",'equipment icon')
+          rep(acc,acc+'#rd-red-dragon-card .rd-accordion.open .rd-acc-btn{color:var(--rd-accent)}#rd-red-dragon-card .rd-accordion.open .rd-acc-count{color:var(--rd-accent)}#rd-red-dragon-card .rd-accordion.open .rd-acc-btn svg{color:var(--rd-accent)}','accordion active')
+          rep("<div class=\"rd-equipment-state '+st[0]+'\">'+st[2]+'<span>","<div class=\"rd-equipment-state '+st[0]+'\"><span>",'equipment value icon')
           fs='@media(max-width:760px){#rd-red-dragon-card .rd-fullscreen-close{top:64px;right:0;z-index:10}#rd-red-dragon-card .rd-fullscreen-prev{left:max(4px,env(safe-area-inset-left));z-index:10;opacity:1!important;visibility:visible!important}#rd-red-dragon-card .rd-fullscreen-next{right:max(4px,env(safe-area-inset-right));z-index:10;opacity:1!important;visibility:visible!important}#rd-red-dragon-card .rd-fullscreen-img{width:auto!important;height:auto!important;max-width:calc(100vw - 16px)!important;max-height:calc(100vh - 16px)!important;object-fit:contain}}'
           extra='@media(max-width:760px){#rd-red-dragon-card .rd-key-spec-engine-mobile{display:block}#rd-red-dragon-card .rd-key-spec-registration .rd-key-spec-label{white-space:nowrap}#rd-red-dragon-card .rd-price-top{align-items:flex-start}#rd-red-dragon-card .rd-calc-btn{margin-top:21px}}'
-          s=once(fs,fs+extra,'mobile refinements')
+          rep(fs,fs+extra,'mobile refinements')
           s,n=re.subn(r"root\.querySelectorAll\('\[data-mobile-price-usd\]'\)\.forEach\(function\(el\)\{[^}]*\}\);root\.querySelectorAll\('\[data-mobile-price-byn\]'\)\.forEach\(function\(el\)\{[^}]*\}\);",'',s,count=1)
           if n!=1: raise SystemExit(f'mobile refresh selectors: expected 1, got {n}')
-          p.write_text(s,encoding='utf-8'); print('PATCH_OK')
+          p.write_text(s,encoding='utf-8')
           PY
           test "$(grep -o 'rd-mobile-buy' index.html | wc -l)" -eq 0
           test "$(grep -o 'data-mobile-price-' index.html | wc -l)" -eq 0
