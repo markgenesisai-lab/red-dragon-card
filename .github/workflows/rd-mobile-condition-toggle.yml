@@ -1,47 +1,8 @@
-name: rd-mobile-condition-toggle
+name: cleanup-temp-workflow
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
-permissions:
-  contents: write
 jobs:
-  patch:
-    if: ${{ github.ref == 'refs/heads/main' }}
+  noop:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout exact base
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Apply exact patch
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$(git rev-parse HEAD)" = "945cf6a24e43818e4a681dafe5bea48f6cdd6990"
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('index.html')
-          s = p.read_text(encoding='utf-8')
-          fn_marker = "function openFeedbackModal(mode,c){"
-          fn_add = "function closeFeedbackModal(){var m=root.querySelector('#rd-feedback-modal');if(m){m.classList.remove('open');m.setAttribute('aria-hidden','true')}} "
-          assert s.count(fn_marker) == 1, 'feedback function marker count mismatch'
-          assert s.count('function closeFeedbackModal(){') == 0, 'feedback helper already present'
-          s = s.replace(fn_marker, fn_add + fn_marker, 1)
-          p.write_text(s, encoding='utf-8')
-          print('Added only the missing feedback modal close helper.')
-          PY
-          test "$(git diff --name-only)" = "index.html"
-          git diff --check
-      - name: Commit patch and remove temporary files
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git rm .github/workflows/rd-mobile-condition-toggle.yml .github/rd-mobile-condition-trigger.txt
-          test "$(git diff --name-only)" = "index.html"
-          git add index.html
-          git diff --cached --check
-          git commit -m "fix: restore card loading and mobile condition toggle"
-          git push
+      - run: echo cleanup
