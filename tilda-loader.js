@@ -7,51 +7,6 @@
   var SOURCE = 'https://raw.githubusercontent.com/markgenesisai-lab/red-dragon-card/main/index.html';
   var HOST_ID = 'rd-red-dragon-github-host';
 
-  function applyMobileGalleryFixes(host) {
-    if (!window.matchMedia || !window.matchMedia('(max-width:760px)').matches) return;
-
-    if (!document.getElementById('rd-mobile-gallery-fixes')) {
-      var style = document.createElement('style');
-      style.id = 'rd-mobile-gallery-fixes';
-      style.textContent = '@media(max-width:760px){' +
-        '#rd-red-dragon-card .rd-fullscreen-close{top:max(4px,env(safe-area-inset-top));right:max(4px,env(safe-area-inset-right));z-index:10}' +
-        '#rd-red-dragon-card .rd-fullscreen-prev{left:max(4px,env(safe-area-inset-left));z-index:10;opacity:1!important;visibility:visible!important}' +
-        '#rd-red-dragon-card .rd-fullscreen-next{right:max(4px,env(safe-area-inset-right));z-index:10;opacity:1!important;visibility:visible!important}' +
-        '#rd-red-dragon-card .rd-fullscreen-img{width:auto;height:auto;max-width:calc(100vw - 16px);max-height:calc(100vh - 24px);object-fit:contain}' +
-      '}';
-      document.head.appendChild(style);
-    }
-
-    function preloadGalleryImages() {
-      if (!host || host.getAttribute('data-rd-mobile-gallery-preloaded') === '1') return true;
-      var imgs = host.querySelectorAll('#rd-red-dragon-card .rd-gallery-track .rd-slide img[src]');
-      if (!imgs.length) return false;
-
-      var cache = [];
-      imgs.forEach(function (img) {
-        var src = img.currentSrc || img.src;
-        if (!src) return;
-        var preloader = new Image();
-        preloader.loading = 'eager';
-        preloader.decoding = 'async';
-        preloader.src = src;
-        cache.push(preloader);
-      });
-      window.__RD_MOBILE_GALLERY_PRELOADS__ = cache;
-      host.setAttribute('data-rd-mobile-gallery-preloaded', '1');
-      return true;
-    }
-
-    if (preloadGalleryImages()) return;
-
-    if (window.MutationObserver) {
-      var observer = new MutationObserver(function () {
-        if (preloadGalleryImages()) observer.disconnect();
-      });
-      observer.observe(host, { childList: true, subtree: true });
-    }
-  }
-
   function load() {
     if (document.getElementById(HOST_ID)) return;
 
@@ -111,10 +66,6 @@
               if (!oldScript.src) resolve();
             });
           });
-        });
-
-        chain.then(function () {
-          applyMobileGalleryFixes(host);
         });
       })
       .catch(function (error) {
