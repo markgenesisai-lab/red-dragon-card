@@ -9,35 +9,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Apply mobile navigation mechanism to desktop
+      - name: Add desktop navigation layer
         shell: python
         run: |
           from pathlib import Path
-          import re
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          a="var nav=root.querySelector('.rd-section-nav');if(nav&&window.matchMedia&&window.matchMedia('(max-width:899px)').matches){"
-          assert s.count(a)==1
-          s=s.replace(a,"var nav=root.querySelector('.rd-section-nav');if(nav){",1)
-          a="var mobile=window.matchMedia&&window.matchMedia('(max-width:899px)').matches;if(!mobile){nav.classList.remove('rd-nav-fixed');navSpacer.classList.remove('rd-nav-spacer-active');navFixed=false;return}"
-          assert s.count(a)==1
-          s=s.replace(a,'',1)
-          a="var headerH=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h'))||62;"
-          assert s.count(a)==1
-          s=s.replace(a,"var headerH=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h'));if(!Number.isFinite(headerH)||headerH<=0)headerH=window.matchMedia&&window.matchMedia('(max-width:899px)').matches?62:72;",1)
-          css="@media(min-width:900px){#rd-red-dragon-card .rd-section-nav.rd-nav-fixed{position:fixed;left:0;right:0;top:var(--rd-nav-top,var(--header-h,72px));z-index:calc(var(--header-z,1000) - 1);margin:0;padding:6px max(10px,calc((100vw - 1152px)/2));background:color-mix(in oklch,var(--rd-bg) 92%,transparent);box-shadow:0 4px 16px rgba(0,0,0,.08)}#rd-red-dragon-card .rd-section-nav.rd-nav-fixed .rd-segment{width:100%;max-width:1152px;margin:0 auto}#rd-red-dragon-card .rd-section-nav-spacer{display:none;height:0}#rd-red-dragon-card .rd-section-nav-spacer.rd-nav-spacer-active{display:block}}"
-          marker='</style>'
-          assert s.count(marker)==1
-          s=s.replace(marker,css+marker,1)
+          marker='/* RD_DESKTOP_NAV_LAYER */'
+          assert marker not in s
+          layer=r'''<script>/* RD_DESKTOP_NAV_LAYER */(function(){'use strict';var root=document.getElementById('rd-red-dragon-card');if(!root)return;var css=document.createElement('style');css.textContent='@media(min-width:900px){#rd-red-dragon-card .rd-section-nav.rd-nav-fixed{position:fixed;left:0;right:0;top:var(--rd-nav-top,var(--header-h,72px));z-index:calc(var(--header-z,1000) - 1);margin:0;padding:6px max(10px,calc((100vw - 1152px)/2));background:color-mix(in oklch,var(--rd-bg) 92%,transparent);box-shadow:0 4px 16px rgba(0,0,0,.08)}#rd-red-dragon-card .rd-section-nav.rd-nav-fixed .rd-segment{width:100%;max-width:1152px;margin:0 auto}#rd-red-dragon-card .rd-desktop-nav-spacer{display:none;height:0}#rd-red-dragon-card .rd-desktop-nav-spacer.rd-nav-spacer-active{display:block}}';document.head.appendChild(css);function desktop(){return window.matchMedia&&window.matchMedia('(min-width:900px)').matches}function headerHeight(){var n=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h'));return Number.isFinite(n)&&n>0?n:72}function install(){if(!desktop())return;var nav=root.querySelector('.rd-section-nav');if(!nav||nav.dataset.rdDesktopNavReady==='1')return;nav.dataset.rdDesktopNavReady='1';var parent=nav.parentNode,spacer=document.createElement('div');spacer.className='rd-section-nav-spacer rd-desktop-nav-spacer';parent.insertBefore(spacer,nav.nextSibling);var navTop=0,navHeight=0,navFixed=false;function update(){if(!nav||!parent)return;if(!desktop()){nav.classList.remove('rd-nav-fixed');spacer.classList.remove('rd-nav-spacer-active');navFixed=false;return}var h=headerHeight();nav.style.setProperty('--rd-nav-top',h+'px');if(!navFixed){navTop=nav.getBoundingClientRect().top+window.scrollY;navHeight=nav.offsetHeight}var shouldFix=window.scrollY>=navTop-h;if(shouldFix&&!navFixed){navHeight=nav.offsetHeight;spacer.style.height=navHeight+'px';spacer.classList.add('rd-nav-spacer-active');nav.classList.add('rd-nav-fixed');navFixed=true}else if(!shouldFix&&navFixed){nav.classList.remove('rd-nav-fixed');spacer.classList.remove('rd-nav-spacer-active');navFixed=false}}nav.addEventListener('click',function(e){if(!desktop())return;var b=e.target.closest('.rd-nav-item');if(!b||!nav.contains(b))return;var id=b.getAttribute('data-target'),el=id&&root.querySelector('#'+id);if(!el)return;e.preventDefault();e.stopImmediatePropagation();root.querySelectorAll('.rd-nav-item').forEach(function(x){var sel=x===b;x.classList.toggle('sel',sel);x.setAttribute('aria-checked',sel?'true':'false')});var target=el.getBoundingClientRect().top+window.scrollY-headerHeight()-64;window.scrollTo({top:Math.max(0,target),behavior:'smooth'})},true);window.addEventListener('scroll',update,{passive:true});window.addEventListener('resize',function(){navFixed=false;nav.classList.remove('rd-nav-fixed');spacer.classList.remove('rd-nav-spacer-active');requestAnimationFrame(update)});requestAnimationFrame(update)}install();if(window.MutationObserver){new MutationObserver(install).observe(root,{childList:true,subtree:true})}})();</script>'''
+          i=s.rfind('</script>')
+          assert i>0
+          s=s[:i]+layer+s[i:]
           p.write_text(s,encoding='utf-8')
-      - name: Validate scope
+      - name: Validate HTML scope and JS syntax
         shell: bash
         run: |
           git diff --check
           test "$(git diff --name-only)" = "index.html"
-          grep -F "var nav=root.querySelector('.rd-section-nav');if(nav){" index.html
-          grep -F "@media(min-width:900px){#rd-red-dragon-card .rd-section-nav.rd-nav-fixed{position:fixed" index.html
-      - name: Commit only index.html and remove helpers
+          python - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile
+          s=Path('index.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script>(.*?)</script>',s,re.S)
+          assert scripts, 'no scripts'
+          with tempfile.NamedTemporaryFile('w',suffix='.js',delete=False,encoding='utf-8') as f:
+              f.write('\n'.join(scripts)); path=f.name
+          subprocess.run(['node','--check',path],check=True)
+          print('JS syntax OK')
+          PY
+          grep -F "RD_DESKTOP_NAV_LAYER" index.html
+      - name: Commit only index.html
         shell: bash
         run: |
           git add index.html
@@ -46,5 +48,5 @@ jobs:
           git add -u || true
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'fix: copy mobile section navigation mechanism to desktop'
+          git commit -m 'fix: copy mobile section navigation behavior to desktop'
           git push
