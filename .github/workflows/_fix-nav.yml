@@ -1,0 +1,36 @@
+name: Fix nav exact
+on:
+  push:
+    branches: [codex-nav-restore-exact-20260914]
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore observer
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          start="if('IntersectionObserver' in window){var ids=['photos','car-specs','inspection','equipment','price-history'"
+          a=s.find(start)
+          assert a>=0, 'observer start not found'
+          b=s.find('}setPhoto(0,false);preloadMobileGalleryImages()',a)
+          assert b>a, 'observer end not found'
+          new="if('IntersectionObserver' in window){var ids=['photos','car-specs','inspection','equipment','price-history'],obs=new IntersectionObserver(function(entries){entries.forEach(function(entry){if(!entry.isIntersecting)return;var id=entry.target.id;root.querySelectorAll('.rd-nav-item').forEach(function(b){var sel=b.getAttribute('data-target')===id;b.classList.toggle('sel',sel);b.setAttribute('aria-checked',sel?'true':'false')})})},{rootMargin:'-45% 0px -45% 0px',threshold:0});ids.forEach(function(id){var el=root.querySelector('#'+id);if(el)obs.observe(el)})}"
+          s=s[:a]+new+s[b:]
+          p.write_text(s,encoding='utf-8')
+      - name: Verify only index
+        shell: bash
+        run: |
+          grep -F "var ids=['photos','car-specs','inspection','equipment','price-history'],obs=new IntersectionObserver(function(entries){entries.forEach" index.html
+          ! grep -F "function updateDesktopNav()" index.html
+          git diff --name-only
+          rm -f .github/workflows/_fix-nav.yml
+          git add index.html .github/workflows/_fix-nav.yml
+          git commit -m "fix: restore working section navigation"
+          git push
