@@ -1,0 +1,91 @@
+name: Patch EUR/USD pricing
+on:
+  push:
+    branches: [fix/euro-usd-auto]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch index.html
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          replacements = []
+          def replace_once(old, new, label):
+              global s
+              n = s.count(old)
+              if n != 1:
+                  raise SystemExit(f'{label}: expected 1 occurrence, found {n}')
+              s = s.replace(old, new, 1)
+              replacements.append(label)
+
+          replace_once(
+              "__rdPricing={usd:null,rate:null,eurRate:null,country:'CN'}",
+              "__rdPricing={usd:null,rate:null,usdPerEur:null,country:'CN'}",
+              'pricing state'
+          )
+
+          replace_once(
+              "function loadCatalogPricing(id,detail){var usdValue=extractCatalogPrice(detail),rate=null,eurRate=null,item=null;try{var qs=new URLSearchParams({page:'1',pageSize:'30',sort:'added',order:'desc',q:String(id||'')}),d=await getRaw('/listings?'+qs.toString()),items=Array.isArray(d)?d:(d.items||d.listings||d.results||d.data?.items||d.data?.listings||d.data?.results||d.data?.cars||d.cars||[]);item=items.find(function(x){return String(x&&x.id||'')===String(id||'')})||null;if(item){var itemUsd=extractCatalogPrice(item);if(itemUsd!=null)usdValue=itemUsd}rate=Number(d&&d.meta&&d.meta.rates&&d.meta.rates.perUsd&&d.meta.rates.perUsd.BYN);if(!Number.isFinite(rate)||rate<=0)rate=Number(d&&d.data&&d.data.meta&&d.data.meta.rates&&d.data.meta.rates.perUsd&&d.data.meta.rates.perUsd.BYN);if(!Number.isFinite(rate)||rate<=0)rate=null;if(rate==null){var dr=detail&&detail.meta&&detail.meta.rates&&detail.meta.rates.perUsd&&detail.meta.rates.perUsd.BYN;rate=Number(dr);if(!Number.isFinite(rate)||rate<=0)rate=null}eurRate=Number(d&&d.meta&&d.meta.rates&&d.meta.rates.perUsd&&d.meta.rates.perUsd.EUR);if(!Number.isFinite(eurRate)||eurRate<=0)eurRate=Number(d&&d.data&&d.data.meta&&d.data.meta.rates&&d.data.meta.rates.perUsd&&d.data.meta.rates.perUsd.EUR);if(!Number.isFinite(eurRate)||eurRate<=0)eurRate=Number(detail&&detail.meta&&detail.meta.rates&&detail.meta.rates.perUsd&&detail.meta.rates.perUsd.EUR);if(!Number.isFinite(eurRate)||eurRate<=0)eurRate=null}catch(e){rate=null;eurRate=null}return{usd:usdValue,rate:rate,eurRate:eurRate,country:sourceCountryCode(item||detail),item:item}}",
+              "function loadCatalogPricing(id,detail){var usdValue=extractCatalogPrice(detail),rate=null,item=null;try{var qs=new URLSearchParams({page:'1',pageSize:'30',sort:'added',order:'desc',q:String(id||'')}),d=await getRaw('/listings?'+qs.toString()),items=Array.isArray(d)?d:(d.items||d.listings||d.results||d.data?.items||d.data?.listings||d.data?.results||d.data?.cars||d.cars||[]);item=items.find(function(x){return String(x&&x.id||'')===String(id||'')})||null;if(item){var itemUsd=extractCatalogPrice(item);if(itemUsd!=null)usdValue=itemUsd}rate=Number(d&&d.meta&&d.meta.rates&&d.meta.rates.perUsd&&d.meta.rates.perUsd.BYN);if(!Number.isFinite(rate)||rate<=0)rate=Number(d&&d.data&&d.data.meta&&d.data.meta.rates&&d.data.meta.rates.perUsd&&d.data.meta.rates.perUsd.BYN);if(!Number.isFinite(rate)||rate<=0)rate=null;if(rate==null){var dr=detail&&detail.meta&&detail.meta.rates&&detail.meta.rates.perUsd&&detail.meta.rates.perUsd.BYN;rate=Number(dr);if(!Number.isFinite(rate)||rate<=0)rate=null}}catch(e){rate=null}return{usd:usdValue,rate:rate,country:sourceCountryCode(item||detail),item:item}}",
+              'catalog pricing'
+          )
+
+          replace_once(
+              "function apiEurRate(c){var r=Number(__rdPricing&&__rdPricing.eurRate);if(Number.isFinite(r)&&r>0)return r;var m=c&&c.meta&&c.meta.rates&&c.meta.rates.perUsd&&c.meta.rates.perUsd.EUR;return Number.isFinite(Number(m))&&Number(m)>0?Number(m):null}",
+              "function apiUsdPerEur(){var r=Number(__rdPricing&&__rdPricing.usdPerEur);return Number.isFinite(r)&&r>0?r:null} async function loadEurUsdRate(){var urls=['https://api.frankfurter.dev/v2/providers/ecb/rate/eur/usd','https://api.frankfurter.dev/v2/rate/eur/usd'];for(var i=0;i<urls.length;i++){var ctrl=('AbortController' in window)?new AbortController():null,timer=ctrl?setTimeout(function(c){return function(){try{c.abort()}catch(e){}}}(ctrl),5000):null;try{var r=await fetch(urls[i],{headers:{Accept:'application/json'},signal:ctrl?ctrl.signal:undefined});if(timer)clearTimeout(timer);if(!r.ok)continue;var d=await r.json().catch(function(){return{}}),rate=Number(d&&d.rate);if(Number.isFinite(rate)&&rate>0)return rate}catch(e){if(timer)clearTimeout(timer)}}return null}",
+              'EUR/USD loader'
+          )
+
+          replace_once(
+              "function calcCustomsPaymentEuro(c,customsBaseUsd){var fuel=sourceFuelCode(c),band=pricingAgeBand(c),eurRate=apiEurRate(c),displacement=sourceDisplacement(c);if(fuel==='electric'||fuel==='ev')return null;if(!band||eurRate==null||!Number.isFinite(customsBaseUsd)||customsBaseUsd<0)return null;var baseEur=customsBaseUsd*eurRate;if(band==='0_3')return customsRateUpTo3(baseEur,displacement);var rate=customsRateForDisplacement(displacement,band);return rate==null?null:displacement*rate}",
+              "function calcCustomsPaymentEuro(c,customsBaseUsd){var fuel=sourceFuelCode(c),band=pricingAgeBand(c),usdPerEur=apiUsdPerEur(),displacement=sourceDisplacement(c);if(fuel==='electric'||fuel==='ev')return null;if(!band||usdPerEur==null||!Number.isFinite(customsBaseUsd)||customsBaseUsd<0)return null;var baseEur=customsBaseUsd/usdPerEur;if(band==='0_3')return customsRateUpTo3(baseEur,displacement);var rate=customsRateForDisplacement(displacement,band);return rate==null?null:displacement*rate}",
+              'customs tariff conversion'
+          )
+
+          replace_once(
+              "function priceData(c){var sourceUsd=sourcePriceUsd(c),rate=apiRate(),eurRate=apiEurRate(c),deliveryActualUsd=sourceUsd!=null?pricingDeliveryUsd(c):null,markupRate=pricingMarkupRate(sourceUsd),markupUsd=sourceUsd!=null&&markupRate!=null?sourceUsd*markupRate:null,deliveryUsd=sourceUsd!=null&&deliveryActualUsd!=null&&markupUsd!=null?sourceUsd+deliveryActualUsd+markupUsd:null,customsBaseUsd=sourceUsd!=null&&deliveryActualUsd!=null?sourceUsd+deliveryActualUsd:null,sourceByn=sourceUsd!=null&&rate!=null?bynNumber(sourceUsd*rate):null,deliveryByn=deliveryUsd!=null&&rate!=null?bynNumber(deliveryUsd*rate):null,customsPaymentEuro=customsBaseUsd!=null?calcCustomsPaymentEuro(c,customsBaseUsd):null,customsPaymentAfter140Eur=customsPaymentEuro!=null?customsPaymentEuro*0.5:null,customsPaymentUsd=customsPaymentAfter140Eur!=null&&eurRate!=null?customsPaymentAfter140Eur/eurRate:null,ageBand=pricingAgeBand(c),recyclingByn=recyclingFeeByn(ageBand),customsOpsByn=120,svhByn=400,fixedByn=recyclingByn!=null?recyclingByn+customsOpsByn+svhByn:null,customsByn=deliveryByn!=null&&customsPaymentUsd!=null&&rate!=null&&fixedByn!=null?deliveryByn+customsPaymentUsd*rate+fixedByn:null,customsUsd=deliveryUsd!=null&&customsPaymentUsd!=null&&rate!=null&&fixedByn!=null?deliveryUsd+customsPaymentUsd+fixedByn/rate:null;return{sourceUsd:sourceUsd,sourceByn:sourceByn,rate:rate,deliveryActualUsd:deliveryActualUsd,markupRate:markupRate,markupUsd:markupUsd,deliveryUsd:deliveryUsd,deliveryByn:deliveryByn,customsBaseUsd:customsBaseUsd,customsPaymentEuro:customsPaymentEuro,customsPaymentAfter140Eur:customsPaymentAfter140Eur,customsPaymentUsd:customsPaymentUsd,ageBand:ageBand,recyclingByn:recyclingByn,customsOpsByn:customsOpsByn,svhByn:svhByn,customsUsd:customsUsd,customsByn:customsByn}}",
+              "function priceData(c){var sourceUsd=sourcePriceUsd(c),rate=apiRate(),usdPerEur=apiUsdPerEur(),deliveryActualUsd=sourceUsd!=null?pricingDeliveryUsd(c):null,markupRate=pricingMarkupRate(sourceUsd),markupUsd=sourceUsd!=null&&markupRate!=null?sourceUsd*markupRate:null,deliveryUsd=sourceUsd!=null&&deliveryActualUsd!=null&&markupUsd!=null?sourceUsd+deliveryActualUsd+markupUsd:null,customsBaseUsd=sourceUsd!=null&&deliveryActualUsd!=null?sourceUsd+deliveryActualUsd:null,sourceByn=sourceUsd!=null&&rate!=null?bynNumber(sourceUsd*rate):null,deliveryByn=deliveryUsd!=null&&rate!=null?bynNumber(deliveryUsd*rate):null,customsPaymentEuro=customsBaseUsd!=null?calcCustomsPaymentEuro(c,customsBaseUsd):null,customsPaymentAfter140Eur=customsPaymentEuro!=null?customsPaymentEuro*0.5:null,customsPaymentUsd=customsPaymentAfter140Eur!=null&&usdPerEur!=null?customsPaymentAfter140Eur*usdPerEur:null,ageBand=pricingAgeBand(c),recyclingByn=recyclingFeeByn(ageBand),customsOpsByn=120,svhByn=400,fixedByn=recyclingByn!=null?recyclingByn+customsOpsByn+svhByn:null,customsByn=deliveryByn!=null&&customsPaymentUsd!=null&&rate!=null&&fixedByn!=null?deliveryByn+customsPaymentUsd*rate+fixedByn:null,customsUsd=deliveryUsd!=null&&customsPaymentUsd!=null&&rate!=null&&fixedByn!=null?deliveryUsd+customsPaymentUsd+fixedByn/rate:null;return{sourceUsd:sourceUsd,sourceByn:sourceByn,rate:rate,deliveryActualUsd:deliveryActualUsd,markupRate:markupRate,markupUsd:markupUsd,deliveryUsd:deliveryUsd,deliveryByn:deliveryByn,customsBaseUsd:customsBaseUsd,customsPaymentEuro:customsPaymentEuro,customsPaymentAfter140Eur:customsPaymentAfter140Eur,customsPaymentUsd:customsPaymentUsd,ageBand:ageBand,recyclingByn:recyclingByn,customsOpsByn:customsOpsByn,svhByn:svhByn,customsUsd:customsUsd,customsByn:customsByn}}",
+              'price calculation'
+          )
+
+          replace_once(
+              "var pricing=await loadCatalogPricing(id,listing);__rdPricing.usd=pricing.usd;__rdPricing.rate=pricing.rate;__rdPricing.country=pricing.country;__rdPricing.eurRate=pricing.eurRate;__rdSourceUpdatedAt=sourceUpdatedAt(pricing.item)||null;",
+              "var pricing=await loadCatalogPricing(id,listing);__rdPricing.usd=pricing.usd;__rdPricing.rate=pricing.rate;__rdPricing.country=pricing.country;__rdPricing.usdPerEur=await loadEurUsdRate();__rdSourceUpdatedAt=sourceUpdatedAt(pricing.item)||null;",
+              'pricing initialization'
+          )
+
+          if '__rdPricing.eurRate' in s or 'apiEurRate(' in s or 'perUsd&&d.meta.rates&&d.meta.rates.perUsd&&d.meta.rates.perUsd.EUR' in s:
+              raise SystemExit('old EUR API dependency remains')
+          if 'apiUsdPerEur()' not in s or 'loadEurUsdRate()' not in s:
+              raise SystemExit('new EUR/USD mechanism missing')
+          p.write_text(s, encoding='utf-8')
+          print('Patched:', ', '.join(replacements))
+      - name: Validate JavaScript syntax
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          start=s.index('<script>(function(){')+len('<script>')
+          end=s.index('</script>', start)
+          Path('/tmp/card.js').write_text(s[start:end], encoding='utf-8')
+          PY
+          node --check /tmp/card.js
+      - name: Commit patch and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/patch-eur-usd.yml
+          git add index.html
+          git commit -m 'fix: calculate customs EUR/USD rate automatically'
+          git push
