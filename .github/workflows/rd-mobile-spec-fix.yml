@@ -43,15 +43,26 @@ jobs:
           rep(fs,fs+extra,'mobile refinements')
           s,n=re.subn(r'<div class="rd-mobile-buy">.*?</div></div><div class="rd-modal rd-fullscreen"','<div class="rd-modal rd-fullscreen"',s,count=1,flags=re.S)
           if n!=1: raise SystemExit(f'mobile buy markup: expected 1, got {n}')
-          s=re.sub(r"root\.querySelectorAll\('\[data-mobile-price-usd\]'\).*?root\.querySelectorAll\('\[data-mobile-price-byn\]'\).*?;",'',s,count=1)
+          # Remove only the two dead mobile-price refresh statements if they are still present.
+          s=s.replace("root.querySelectorAll('[data-mobile-price-usd]').forEach(function(el){el.textContent=d.sourceUsd!=null?usd(d.sourceUsd):'—'});",'',1)
+          s=s.replace("root.querySelectorAll('[data-mobile-price-byn]').forEach(function(el){el.textContent=d.sourceByn!=null?bynText(d.sourceByn):'—'})",'',1)
+          checks={
+            'mobile-buy':'rd-mobile-buy' not in s,
+            'mobile-price':'data-mobile-price-' not in s,
+            'equipment-icon':'st[2]' not in s,
+            'engine-mobile':s.count('rd-key-spec-engine-mobile')==2,
+            'fullscreen-close':'top:64px;right:0;z-index:10' in s,
+            'back-button':'bottom:36px' in s,
+            'route-new':'M18 9v1a4 4 0 0 1-4 4' in s,
+            'drive-icon':"drive:'<svg" in s,
+            'accordion-red':'.rd-accordion.open .rd-acc-btn{color:var(--rd-accent)}' in s,
+            'registration-nowrap':'.rd-key-spec-registration .rd-key-spec-label{white-space:nowrap}' in s
+          }
+          bad=[k for k,v in checks.items() if not v]
+          if bad: raise SystemExit('VALIDATION_FAILED:'+','.join(bad))
           p.write_text(s,encoding='utf-8')
+          print('PATCH_OK')
           PY
-          test "$(grep -o 'rd-mobile-buy' index.html | wc -l)" -eq 0
-          test "$(grep -o 'data-mobile-price-' index.html | wc -l)" -eq 0
-          test "$(grep -o 'st\[2\]' index.html | wc -l)" -eq 0
-          test "$(grep -o 'rd-key-spec-engine-mobile' index.html | wc -l)" -eq 2
-          test "$(grep -o 'rd-fullscreen-close{top:64px;right:0;z-index:10}' index.html | wc -l)" -eq 1
-          test "$(grep -o 'rd-back-button{right:auto;left:50%;bottom:36px' index.html | wc -l)" -eq 1
       - name: Commit patch and remove workflow
         run: |
           git config user.name "github-actions[bot]"
