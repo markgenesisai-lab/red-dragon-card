@@ -73,7 +73,7 @@ jobs:
         shell: bash
         run: |
           git diff --check
-          test "$(git diff --name-only HEAD^ HEAD)" = "index.html"
+          test "$(git diff --name-only)" = "index.html"
           test -s index.html
           test -s tilda-loader.js
           git config user.name 'github-actions[bot]'
