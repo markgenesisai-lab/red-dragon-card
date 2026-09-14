@@ -15,17 +15,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" != "a62d0ebd61352fbfa8c1a5616dd6909ded4132c5"
+          test "$(git rev-parse HEAD)" = "1f7e79d6d3e512bc9fb2066cddcc970b4dff7b56"
           git checkout a62d0ebd61352fbfa8c1a5616dd6909ded4132c5 -- index.html
           python3 - <<'PY'
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
           assert s.count('function closeFeedbackModal(){')==1
-          old='@media(max-width:899px){#rd-red-dragon-card .rd-back-button{right:auto;left:50%;bottom:36px;transform:translateX(-50%)}}'
-          new='@media(max-width:899px){#rd-red-dragon-card .rd-back-button{right:auto;left:50%;bottom:18px;transform:translateX(-50%)}}'
-          assert s.count(old)==1
-          s=s.replace(old,new,1)
+          assert s.count('bottom:36px')==1
+          s=s.replace('bottom:36px','bottom:18px',1)
           m='@media(max-width:760px){#rd-red-dragon-card .rd-key-spec-registration .rd-key-spec-label>span{font-size:0}'
           a='@media(max-width:760px){#rd-red-dragon-card .rd-key-spec-registration .rd-key-spec-label svg{transform:translateY(-1px)}}'
           assert s.count(m)==1 and s.count(a)==0
@@ -52,6 +50,9 @@ jobs:
           assert s.count(m)==1 and s.count(a)==0
           s=s.replace(m,a+m,1)
           assert s.count('function closeFeedbackModal(){')==1 and s.count('function handleDeviceBack(){')==1
+          assert s.count('bottom:18px')==1 and s.count('transform:translateY(-1px)')==1
+          assert s.count('rd-report-accordion.open .rd-report-accordion-trigger{color:var(--rd-accent)}')==1
+          assert s.count(a)==1
           p.write_text(s,encoding='utf-8')
           PY
           python3 - <<'PY'
