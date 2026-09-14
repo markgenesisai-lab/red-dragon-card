@@ -1,0 +1,40 @@
+name: Fix photo slide and spec colors
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply exact corrections
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          old_css='@media(min-width:900px){#rd-red-dragon-card .rd-fullscreen-img{position:absolute;left:50%;top:50%;max-width:92vw;max-height:88vh;transform:translate(-50%,-50%);transition:none}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-current{z-index:2;opacity:1;transform:translate(-50%,-50%)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-enter-left,#rd-red-dragon-card .rd-fullscreen-img.rd-modal-enter-right{z-index:3;opacity:1;transition:none}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-enter-left{transform:translate(calc(-50% - 100vw),-50%)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-enter-right{transform:translate(calc(-50% + 100vw),-50%)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-entered{transform:translate(-50%,-50%);transition:transform .32s cubic-bezier(.22,1,.36,1)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-exit-left,#rd-red-dragon-card .rd-fullscreen-img.rd-modal-exit-right{z-index:2;opacity:1;transition:transform .32s cubic-bezier(.22,1,.36,1)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-exit-left{transform:translate(calc(-50% - 100vw),-50%)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-exit-right{transform:translate(calc(-50% + 100vw),-50%)}}'
+          new_css='@media(min-width:900px){#rd-red-dragon-card .rd-fullscreen-img{position:absolute;max-width:92vw;max-height:88vh;object-fit:contain;border-radius:10px;user-select:none;-webkit-user-drag:none}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-current{z-index:2;opacity:1;transform:translateX(0)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-enter-left,#rd-red-dragon-card .rd-fullscreen-img.rd-modal-enter-right{z-index:3;opacity:1;transition:none}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-enter-left{transform:translateX(-100%)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-enter-right{transform:translateX(100%)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-entered{transform:translateX(0);transition:transform .42s cubic-bezier(.22,1,.36,1)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-exit-left,#rd-red-dragon-card .rd-fullscreen-img.rd-modal-exit-right{z-index:2;opacity:1;transition:transform .42s cubic-bezier(.22,1,.36,1)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-exit-left{transform:translateX(-100%)}#rd-red-dragon-card .rd-fullscreen-img.rd-modal-exit-right{transform:translateX(100%)}}'
+          if s.count(old_css)!=1: raise SystemExit(f'desktop CSS count {s.count(old_css)}')
+          s=s.replace(old_css,new_css,1)
+          old_yes='#rd-red-dragon-card .rd-equipment-state.yes{color:var(--rd-muted)}'
+          old_no='#rd-red-dragon-card .rd-equipment-state.no{color:var(--rd-muted)}'
+          old_opt='#rd-red-dragon-card .rd-equipment-state.option{color:var(--rd-muted)}'
+          for old,new in [(old_yes,'#rd-red-dragon-card .rd-equipment-state.yes{color:var(--rd-success)}'),(old_no,'#rd-red-dragon-card .rd-equipment-state.no{color:var(--rd-danger)}'),(old_opt,'#rd-red-dragon-card .rd-equipment-state.option{color:#b7791f}')]:
+              if s.count(old)!=1: raise SystemExit(f'color rule not found: {old}')
+              s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/_fix-photo-spec.yml
+          git add index.html .github/workflows/_fix-photo-spec.yml
+          git commit -m "Fix desktop fullscreen slide behavior and restore spec state colors"
+          git push
