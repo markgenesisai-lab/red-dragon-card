@@ -1,0 +1,56 @@
+name: _two-price-tweaks
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_two-price-tweaks.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply exactly two requested changes
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          old_usd = "function usd(v){return v==null||v===''?'—':'$'+num(v)}"
+          new_usd = "function usd(v){if(v==null||v==='')return'—';var n=Number(v);return Number.isFinite(n)?'$'+n.toLocaleString('ru-RU',{maximumFractionDigits:0}):'—'}"
+          assert s.count(old_usd) == 1, f'usd formatter occurrence: {s.count(old_usd)}'
+          s = s.replace(old_usd, new_usd, 1)
+
+          old_svh = 'customsOpsByn=120,svhByn=400,fixedByn='
+          new_svh = 'customsOpsByn=120,svhByn=1100,fixedByn='
+          assert s.count(old_svh) == 1, f'svh occurrence: {s.count(old_svh)}'
+          s = s.replace(old_svh, new_svh, 1)
+
+          p.write_text(s, encoding='utf-8')
+          PY
+
+          git diff --check
+          test "$(git diff --numstat -- index.html | awk '{print $1}')" = "1" || true
+          git status --short
+          git diff -- index.html
+          git config user.name 'red-dragon-pricing-bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix: round displayed prices and update internal costs'
+          git push
+
+      - name: Remove temporary workflow
+        if: success()
+        shell: bash
+        run: |
+          rm -f .github/workflows/_two-price-tweaks.yml
+          git config user.name 'red-dragon-pricing-bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -u .github/workflows/_two-price-tweaks.yml
+          git commit -m 'chore: remove temporary price tweak workflow'
+          git push
