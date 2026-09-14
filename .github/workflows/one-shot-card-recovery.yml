@@ -1,0 +1,78 @@
+name: one-shot-card-recovery
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Restore working base and apply exact requested changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" != "a62d0ebd61352fbfa8c1a5616dd6909ded4132c5"
+          git checkout a62d0ebd61352fbfa8c1a5616dd6909ded4132c5 -- index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          assert s.count('function closeFeedbackModal(){')==1
+          old='@media(max-width:899px){#rd-red-dragon-card .rd-back-button{right:auto;left:50%;bottom:36px;transform:translateX(-50%)}}'
+          new='@media(max-width:899px){#rd-red-dragon-card .rd-back-button{right:auto;left:50%;bottom:18px;transform:translateX(-50%)}}'
+          assert s.count(old)==1
+          s=s.replace(old,new,1)
+          m='@media(max-width:760px){#rd-red-dragon-card .rd-key-spec-registration .rd-key-spec-label>span{font-size:0}'
+          a='@media(max-width:760px){#rd-red-dragon-card .rd-key-spec-registration .rd-key-spec-label svg{transform:translateY(-1px)}}'
+          assert s.count(m)==1 and s.count(a)==0
+          s=s.replace(m,a+m,1)
+          m='#rd-red-dragon-card .rd-report-accordion.open .rd-report-accordion-indicator{transform:rotate(180deg)}'
+          a='#rd-red-dragon-card .rd-report-accordion.open .rd-report-accordion-trigger{color:var(--rd-accent)}#rd-red-dragon-card .rd-report-accordion.open .rd-report-accordion-meta{color:var(--rd-accent)}#rd-red-dragon-card .rd-report-accordion.open .rd-report-accordion-count{color:var(--rd-accent)}#rd-red-dragon-card .rd-report-accordion.open .rd-report-accordion-indicator{color:var(--rd-accent)}'
+          assert s.count(m)==1 and s.count('rd-report-accordion.open .rd-report-accordion-trigger{color:var(--rd-accent)}')==0
+          s=s.replace(m,m+a,1)
+          go="function goBack(){if(document.referrer&&document.referrer.indexOf(location.origin)===0&&history.length>1){history.back();return}location.href='/catalog/'}"
+          ng="function goBack(){var modal=root.querySelector('.rd-modal.open');if(modal){closeModal(modal.id);return}var feedback=root.querySelector('#rd-feedback-modal.open');if(feedback){closeFeedbackModal();return}var acc=root.querySelector('.rd-accordion.open');if(acc){var btn=acc.querySelector('.rd-acc-btn');acc.classList.remove('open');if(btn)btn.setAttribute('aria-expanded','false');return}var reportAcc=root.querySelector('.rd-report-accordion.open');if(reportAcc){var rbtn=reportAcc.querySelector('.rd-report-accordion-trigger');reportAcc.classList.remove('open');if(rbtn)rbtn.setAttribute('aria-expanded','false');return}location.href='/catalog/'}"
+          h="function handleDeviceBack(){var modal=root.querySelector('.rd-modal.open');if(modal){closeModal(modal.id);return true}var feedback=root.querySelector('#rd-feedback-modal.open');if(feedback){closeFeedbackModal();return true}var reportAcc=root.querySelector('.rd-report-accordion.open');if(reportAcc){var rb=reportAcc.querySelector('.rd-report-accordion-trigger');reportAcc.classList.remove('open');if(rb)rb.setAttribute('aria-expanded','false');return true}var acc=root.querySelector('.rd-accordion.open');if(acc){var ab=acc.querySelector('.rd-acc-btn');acc.classList.remove('open');if(ab)ab.setAttribute('aria-expanded','false');return true}return false} "
+          assert s.count(go)==1 and s.count('function handleDeviceBack(){')==0
+          s=s.replace(go,h+ng,1)
+          m="root.querySelector('#rd-back-button')?.addEventListener('click',goBack);"
+          a="window.addEventListener('popstate',function(){if(!handleDeviceBack()){location.href='/catalog/'}});"
+          assert s.count(m)==1 and s.count(a)==0
+          s=s.replace(m,m+a,1)
+          m='#rd-red-dragon-card .rd-condition-tooltip strong{display:block;font-size:12px;margin-bottom:8px}'
+          a='@media(max-width:760px){#rd-red-dragon-card .rd-condition-hover:hover .rd-condition-tooltip{opacity:0;visibility:hidden;transform:translateY(-3px)}#rd-red-dragon-card .rd-condition-hover.open .rd-condition-tooltip{opacity:1;visibility:visible;transform:none}}'
+          assert s.count(m)==1 and s.count(a)==0
+          s=s.replace(m,m+a,1)
+          m="root.querySelectorAll('[data-photo-filter]').forEach(function(b){b.addEventListener('click',function(){setPhotoFilter(b.getAttribute('data-photo-filter'),true)})});"
+          a="root.querySelectorAll('.rd-condition-hover .rd-chip-condition').forEach(function(b){b.addEventListener('click',function(e){if(!window.matchMedia||!window.matchMedia('(max-width:760px)').matches)return;e.preventDefault();e.stopPropagation();var h=b.closest('.rd-condition-hover'),open=h&&h.classList.contains('open');root.querySelectorAll('.rd-condition-hover.open').forEach(function(x){x.classList.remove('open')});if(h&&!open)h.classList.add('open')})});"
+          assert s.count(m)==1 and s.count(a)==0
+          s=s.replace(m,a+m,1)
+          assert s.count('function closeFeedbackModal(){')==1 and s.count('function handleDeviceBack(){')==1
+          p.write_text(s,encoding='utf-8')
+          PY
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text(encoding='utf-8')
+          m=re.search(r'<script>([\s\S]*)</script>\s*$',s)
+          assert m
+          Path('/tmp/card.js').write_text(m.group(1),encoding='utf-8')
+          PY
+          node --check /tmp/card.js
+          git diff --check
+      - name: Commit recovery and clean temporary files
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .github/workflows .github/rd-mobile-condition-trigger.txt
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git diff --cached --check
+          git diff --cached --name-only
+          git commit -m 'fix: restore working card and requested mobile changes'
+          git push
