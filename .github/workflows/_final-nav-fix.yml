@@ -1,0 +1,41 @@
+name: Final nav fix
+on:
+  push:
+    branches:
+      - codex-final-nav-fix-20260914
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Restore working navigation logic
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          start="if('IntersectionObserver' in window){var ids=['photos','car-specs','inspection','equipment','price-history'"
+          a=s.find(start)
+          assert a>=0, 'observer start not found'
+          b=s.find('}setPhoto(0,false);preloadMobileGalleryImages()',a)
+          assert b>a, 'observer end not found'
+          new="if('IntersectionObserver' in window){var ids=['photos','car-specs','inspection','equipment','price-history'],obs=new IntersectionObserver(function(entries){entries.forEach(function(entry){if(!entry.isIntersecting)return;var id=entry.target.id;root.querySelectorAll('.rd-nav-item').forEach(function(b){var sel=b.getAttribute('data-target')===id;b.classList.toggle('sel',sel);b.setAttribute('aria-checked',sel?'true':'false')})})},{rootMargin:'-45% 0px -45% 0px',threshold:0});ids.forEach(function(id){var el=root.querySelector('#'+id);if(el)obs.observe(el)})}"
+          s=s[:a]+new+s[b:]
+          p.write_text(s,encoding='utf-8')
+      - name: Commit only index.html
+        shell: bash
+        run: |
+          test -f index.html
+          grep -F "var ids=['photos','car-specs','inspection','equipment','price-history'],obs=new IntersectionObserver" index.html
+          if grep -F "function updateDesktopNav()" index.html; then exit 1; fi
+          test "$(git diff --name-only)" = "index.html"
+          rm -f .github/workflows/_final-nav-fix.yml
+          git config user.name "markgenesisai-lab"
+          git config user.email "mark.genesis.ai@gmail.com"
+          git add index.html .github/workflows/_final-nav-fix.yml
+          git commit -m "fix: restore working section navigation"
+          git push
